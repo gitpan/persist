@@ -1,0 +1,123 @@
+Persist Data Access Library
+===============================
+
+Persist is a tool for easily managing data in a database, for managing
+database schemas, and for even managing database instances. It is meant
+to make table management and filtering unified across database backends.
+That is, you write one statement and the backend driver makes sure that
+the statement is handled properly on the back-end--in some cases,
+emulating database features to get the correct functionality.
+
+The emphasis has been upon developing an easy-to-program API that is
+uniform across backends. The back-ends make certain that certain
+features are available, but do not guarantee that all aspects are fully
+enforced--for example, creating a UNIQUE index under the PostgreSQL
+driver is fully enforced by the PostgreSQL database, but the Memory
+driver does not explicitly enforce this constraint.
+
+The primary goal of this library is ease of use. High performance is not
+of primary interest. If performance is what you are looking for, you
+should probably use DBI or DBM database interfaces directly. This
+library was originally designed for use supporting web-based tools where
+performance is important--particularly for queries--but ultra-high
+performance isn't generally required.
+
+RELEASE NOTES (0.3.1)
+
+At this point, the API has pretty well stabilized. There have been some
+additions, but few changes. Some changes are coming--particularly with
+connection methods and schema management, but these should be minor. A
+major interest of the 0.3.x series is stabilizing the API.  Another
+major goal of the 0.3.1 series is stabilize the system to minimize bugs.
+
+As of this writing, there are two back-ends and one abstract support
+driver. The memory back-end is now fully functional--to my
+knowledge--and supports ``temporary'' persistence. Each memory database
+is fresh and all data is lost upon destruction. This is primarily
+intended for testing purposes. It is likely to be very slow as all data
+is stored in Perl hashes. There is one notable bug involving TIMESTAMP
+types at this time, see Bugs for details. This shouldn't affect very
+many users.
+
+The DBI abstract back-end is used to create other DBI back-ends. It
+features pre-built queries for most of the common operations and support
+for table and column lookups through the new DBI calls for table_info
+and column_info. Drivers extending the DBI driver still need to
+implement DDL and DBA calls as those are nearly always dependent upon
+the database system being used.
+
+The other concrete driver is the PostgreSQL driver. This is the only
+driver that has really been built with the intent of actual use.  It
+supports all functionality of Persist via a PostgreSQL system including
+DBA calls, if a DBA user is available. It is still a little unreliable
+and also requires version 7.3 or later of PostgreSQL.
+
+INSTALLATION
+
+The simplest way to install this module type the following:
+
+   perl Makefile.PL
+   make
+   make test
+   make install
+
+If you intend to use the PostgreSQL driver, you probably will want to
+make sure Persist is working properly. The PostgreSQL driver tests are
+not enabled by default because they require additional configuration. To
+configure these tests. Do something like this:
+
+   perl Makefile.PL PGTESTCONN=dbname=sterling PGTESTUSER=sterling \
+                    PGTESTPASS=somepass
+   make && make test && make install
+
+This will tell the PostgreSQL tests to use a database named "sterling"
+with a user named "sterling" with password "somepass" during testing.
+The tests will create and drop a couple tables several times (named
+"folks" and "favorites"). You should probably use a blank database owned
+by a user with the ability to create databases and users--to test the
+DBA features of the PostgreSQL driver.
+
+For any other help, you can see http://contentment.sourceforge.net/ or
+contact hanenkamp@users.sourceforge.net.
+
+DEPENDENCIES
+
+This module requires these other modules and libraries:
+
+  * Carp
+  * Date::Calc
+  * DBD::Pg
+  * DBI
+  * PostgreSQL 7.3 or greater
+
+COPYRIGHT AND LICENCE
+
+Copyright (c) 2003, Andrew Sterling Hanenkamp
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without 
+modification, are permitted provided that the following conditions 
+are met:
+
+  * Redistributions of source code must retain the above copyright 
+    notice, this list of conditions and the following disclaimer.
+  * Redistributions in binary form must reproduce the above copyright 
+    notice, this list of conditions and the following disclaimer in 
+	the documentation and/or other materials provided with the 
+	distribution.
+  * Neither the name of the Persist project nor the names of its 
+    contributors may be used to endorse or promote products derived 
+	from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS 
+FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE 
+COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, 
+INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; 
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT 
+LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN 
+ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
+POSSIBILITY OF SUCH DAMAGE.

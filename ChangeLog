@@ -1,0 +1,967 @@
+2003-07-22 22:42  hanenkamp
+
+	* Persist/: Source/t/source.t, Table/t/table.t: Removed handled
+	TODO comments.
+
+2003-07-22 22:34  hanenkamp
+
+	* Makefile.PL, Persist/Persist.pm: Moved ABSTRACT back to
+	Makefile.PL.
+
+2003-07-22 22:15  hanenkamp
+
+	* Persist/Table/t/table.t: Added test for last_* AUTOLOAD and
+	changed initial inserts to insert_nows.
+
+2003-07-22 22:12  hanenkamp
+
+	* Persist/Table/t/table.t: Added tests for table_name and
+	last_value.
+
+2003-07-22 22:06  hanenkamp
+
+	* Persist/Table/Table.pm: Changed POD documentation to make it more
+	user appropriate.
+
+2003-07-22 22:03  hanenkamp
+
+	* Persist/Source/t/source.t: Added test for explicit joins.
+
+2003-07-22 21:55  hanenkamp
+
+	* MANIFEST, Persist/Join/Join.pm, Persist/Join/t/explicit_join.t,
+	Persist/Source/Source.pm, Persist/Tabular/Tabular.pm: Added tests
+	for explicit joins and fixed bugs.
+
+2003-07-22 21:20  hanenkamp
+
+	* Persist/Join/Join.pm: Fixed POD documentation to be more
+	appropriate for users.
+
+2003-07-22 21:15  hanenkamp
+
+	* MANIFEST, Makefile.PL, Persist/Persist.pm,
+	Persist/Driver/DBI/PostgreSQL/t/small_join.t,
+	Persist/Driver/Memory/t/autonumber.t,
+	Persist/Driver/Memory/t/boolean.t,
+	Persist/Driver/Memory/t/compile.t,
+	Persist/Driver/Memory/t/create.t, Persist/Driver/Memory/t/init.t,
+	Persist/Driver/Memory/t/insert_update_delete.t,
+	Persist/Driver/Memory/t/integer.t, Persist/Driver/Memory/t/join.t,
+	Persist/Driver/Memory/t/new_instance.t,
+	Persist/Driver/Memory/t/real.t,
+	Persist/Driver/Memory/t/small_join.t,
+	Persist/Driver/Memory/t/timestamp.t,
+	Persist/Driver/Memory/t/varchar.t: Updated the testing system for
+	Memory driver, added timestamp tests, and fixed bugs.
+
+2003-07-22 19:36  hanenkamp
+
+	* testsetup.PL, Persist/Driver/DBI/PostgreSQL/PostgreSQL.pm,
+	Persist/Driver/DBI/PostgreSQL/t/timestamp.t: Added tests for
+	timestamps to PostgreSQL driver test suite and fixed bugs.
+
+2003-07-22 18:58  hanenkamp
+
+	* Persist/Driver/DBI/PostgreSQL/t/pgtests.PL: Updated test
+	configuration.
+
+2003-07-22 13:14  hanenkamp
+
+	* MANIFEST, Makefile.PL, testsetup.PL, Persist/Driver/DBI/DBI.pm,
+	Persist/Driver/DBI/PostgreSQL/PostgreSQL.pm,
+	Persist/Driver/DBI/PostgreSQL/t/autonumber.t,
+	Persist/Driver/DBI/PostgreSQL/t/boolean.t,
+	Persist/Driver/DBI/PostgreSQL/t/create.t,
+	Persist/Driver/DBI/PostgreSQL/t/init.t,
+	Persist/Driver/DBI/PostgreSQL/t/insert_update_delete.t,
+	Persist/Driver/DBI/PostgreSQL/t/integer.t,
+	Persist/Driver/DBI/PostgreSQL/t/join.t,
+	Persist/Driver/DBI/PostgreSQL/t/new_instance.t,
+	Persist/Driver/DBI/PostgreSQL/t/pgcleanup,
+	Persist/Driver/DBI/PostgreSQL/t/real.t,
+	Persist/Driver/DBI/PostgreSQL/t/small_join.t,
+	Persist/Driver/DBI/PostgreSQL/t/varchar.t, Persist/Join/t/1.t,
+	Persist/Join/t/join.t, Persist/Source/t/1.t,
+	Persist/Source/t/source.t, Persist/Table/t/1.t,
+	Persist/Table/t/table.t, Persist/Tabular/t/1.t,
+	Persist/Tabular/t/tabular.t: Updated tests and redesigned test
+	configuration.
+
+2003-07-18 09:35  hanenkamp
+
+	* Persist/Filter/: Filter.pm, t/1.t, t/parse_format.t, t/walk.t:
+	Updated tests and fixed bugs.
+
+2003-07-17 23:09  hanenkamp
+
+	* Makefile.PL, Persist/Driver/DBI/DBI.pm,
+	Persist/Driver/DBI/PostgreSQL/PostgreSQL.pm,
+	Persist/Driver/DBI/PostgreSQL/test-config.pl,
+	Persist/Driver/DBI/PostgreSQL/test-config.pl.dist,
+	Persist/Driver/DBI/PostgreSQL/t/1.t,
+	Persist/Driver/DBI/PostgreSQL/t/autonumber.t,
+	Persist/Driver/DBI/PostgreSQL/t/boolean.t,
+	Persist/Driver/DBI/PostgreSQL/t/create.t,
+	Persist/Driver/DBI/PostgreSQL/t/init.t,
+	Persist/Driver/DBI/PostgreSQL/t/insert_update_delete.t,
+	Persist/Driver/DBI/PostgreSQL/t/integer.t,
+	Persist/Driver/DBI/PostgreSQL/t/join.t,
+	Persist/Driver/DBI/PostgreSQL/t/new_instance.t,
+	Persist/Driver/DBI/PostgreSQL/t/pgtests.PL,
+	Persist/Driver/DBI/PostgreSQL/t/real.t,
+	Persist/Driver/DBI/PostgreSQL/t/small_join.t,
+	Persist/Driver/DBI/PostgreSQL/t/timestamp.t,
+	Persist/Driver/DBI/PostgreSQL/t/varchar.t: Updated tests and test
+	configuration and fixed bugs.
+
+2003-07-17 23:09  hanenkamp
+
+	* Persist/Persist.pm: Fixed a POD bug (misplaced =back).
+
+2003-07-17 10:20  hanenkamp
+
+	* Persist/Driver/: DBI/t/1.t, DBI/t/compiles.t, t/1.t,
+	t/check_interface.t: Updated tests for Persist::Driver and
+	Persist::Driver::DBI.
+
+2003-07-17 10:13  hanenkamp
+
+	* README: Added Date::Calc to list of prerequisites.
+
+2003-07-17 10:13  hanenkamp
+
+	* Persist/: Persist.pm, t/1.t, t/autonumber.t, t/boolean.t,
+	t/format_timestamp.t, t/integer.t, t/link.t,
+	t/normalize_timestamp.t, t/parse_timestamp.t, t/primary.t,
+	t/real.t, t/timestamp.t, t/timestamp_from_time.t, t/unique.t,
+	t/varchar.t: Updated tests for Persist and fixed bugs to get tests
+	running.
+
+2003-07-17 10:12  hanenkamp
+
+	* Persist/Filter/Filter.pm: Fixed a POD bug.
+
+2003-07-17 00:38  hanenkamp
+
+	* Persist/: Tabular/Tabular.pm, Driver/Driver.pm: Updated
+	documentation.
+
+2003-07-17 00:33  hanenkamp
+
+	* Persist/Table/Table.pm: Updated documentation.
+
+2003-07-17 00:26  hanenkamp
+
+	* Persist/Source/Source.pm: Updated documentation.
+
+2003-07-17 00:09  hanenkamp
+
+	* Persist/Join/Join.pm: Updated documentation.
+
+2003-07-17 00:05  hanenkamp
+
+	* Persist/Filter/Filter.pm: Updated documentation.
+
+2003-07-16 23:07  hanenkamp
+
+	* Persist/Driver/Memory/Memory.pm: Updated documentation.
+
+2003-07-16 18:05  hanenkamp
+
+	* Persist/Driver/DBI/PostgreSQL/PostgreSQL.pm: Updated
+	documentation.
+
+2003-07-16 13:55  hanenkamp
+
+	* Persist/Driver/DBI/DBI.pm: Updated the documentation.
+
+2003-07-16 13:24  hanenkamp
+
+	* Persist/Driver/Driver.pm: Updated documentation.
+
+2003-07-14 17:07  hanenkamp
+
+	* Persist/Persist.pm: Updated documentation and added
+	normalize_timestamp method.
+
+2003-07-14 16:07  hanenkamp
+
+	* Makefile.PL, Persist/Makefile.PL, Persist/Driver/Makefile.PL,
+	Persist/Driver/DBI/Makefile.PL,
+	Persist/Driver/DBI/PostgreSQL/Makefile.PL,
+	Persist/Driver/Memory/Makefile.PL, Persist/Filter/Makefile.PL,
+	Persist/Join/Makefile.PL, Persist/Source/Makefile.PL,
+	Persist/Table/Makefile.PL, Persist/Tabular/Makefile.PL: Fixed
+	ABSTRACT information in makefiles.
+
+2003-07-14 16:03  hanenkamp
+
+	* README: Updated README in anticipation of release.
+
+2003-07-14 15:53  hanenkamp
+
+	* MANIFEST, Persist/MANIFEST, Persist/Driver/MANIFEST,
+	Persist/Driver/DBI/MANIFEST,
+	Persist/Driver/DBI/PostgreSQL/MANIFEST,
+	Persist/Driver/Memory/MANIFEST, Persist/Filter/MANIFEST,
+	Persist/Join/MANIFEST, Persist/Source/MANIFEST,
+	Persist/Table/MANIFEST, Persist/Tabular/MANIFEST: Removed all but
+	the top level MANIFEST file.
+
+2003-07-14 01:29  hanenkamp
+
+	* Bugs, ChangeLog, MANIFEST, ToDo, Persist/Driver/Memory/Memory.pm,
+	Persist/Driver/Memory/t/1.t, Persist/Driver/Memory/t/autonumber.t,
+	Persist/Driver/Memory/t/boolean.t,
+	Persist/Driver/Memory/t/compile.t,
+	Persist/Driver/Memory/t/create.t, Persist/Driver/Memory/t/init.t,
+	Persist/Driver/Memory/t/insert_update_delete.t,
+	Persist/Driver/Memory/t/integer.t, Persist/Driver/Memory/t/join.t,
+	Persist/Driver/Memory/t/new_instance.t,
+	Persist/Driver/Memory/t/real.t,
+	Persist/Driver/Memory/t/small_join.t,
+	Persist/Driver/Memory/t/timestamp.t,
+	Persist/Driver/Memory/t/varchar.t: Fixed a Memory driver bug
+	resulting in joins rejecting the first successful match and
+	revamped testing for Memory.
+
+2003-07-10 11:24  hanenkamp
+
+	* Persist/Table/Table.pm: Renamed last_seq to last_value--using
+	last_<var> was causing deep/infinite recursion in AUTOLOAD (oops).
+
+2003-07-10 11:16  hanenkamp
+
+	* Persist/: Driver/DBI/PostgreSQL/PostgreSQL.pm, Source/Source.pm,
+	Tabular/Tabular.pm: Made sure that all user errors croak instead of
+	die.
+
+2003-07-10 09:01  hanenkamp
+
+	* Persist/Table/Table.pm: Unfixed last non-bug (Oops).
+
+2003-07-10 08:57  hanenkamp
+
+	* Persist/: Driver/Memory/Memory.pm, Table/Table.pm: Fixed a bug in
+	Table.pm causing insert_now to always fail.
+
+2003-07-01 12:06  hanenkamp
+
+	* ChangeLog, ToDo, Persist/Source/Source.pm, Persist/Source/t/1.t,
+	Persist/Table/Table.pm, Persist/Table/t/1.t: Added usability
+	functions to the front-end (modified Table::insert, added
+	Table::insert_now, Source::insert, and Source::update).
+
+2003-06-30 00:27  hanenkamp
+
+	* Bugs, ChangeLog, Persist/Driver/DBI/DBI.pm,
+	Persist/Driver/DBI/PostgreSQL/PostgreSQL.pm,
+	Persist/Driver/DBI/PostgreSQL/test-config.pl,
+	Persist/Driver/DBI/PostgreSQL/t/1.t: Fixed bugs in PostgreSQL
+	driver where results of queries were not handling TIMESTAMP
+	correctly. Required some alteration of the DBI abstract driver
+	interface.
+
+2003-06-29 21:57  hanenkamp
+
+	* Bugs, ChangeLog, ToDo, Persist/Persist.pm,
+	Persist/Driver/DBI/DBI.pm,
+	Persist/Driver/DBI/PostgreSQL/PostgreSQL.pm,
+	Persist/Source/Source.pm, Persist/Table/Table.pm: Fixed a bug that
+	caused Persist::Table::_sync to attempt an update when no changes
+	have been made.
+
+2003-06-28 14:33  hanenkamp
+
+	* Bugs, ChangeLog, ToDo, Persist/Persist.pm,
+	Persist/Driver/DBI/DBI.pm,
+	Persist/Driver/DBI/PostgreSQL/PostgreSQL.pm,
+	Persist/Driver/DBI/PostgreSQL/test-config.pl,
+	Persist/Driver/DBI/PostgreSQL/t/1.t, Persist/Driver/Memory/t/1.t:
+	Added tests for BOOLEAN, REAL, and TIMESTAMP to PostgreSQL driver
+	and resolved bugs.
+
+2003-06-27 15:48  hanenkamp
+
+	* Bugs, ChangeLog, MANIFEST, ToDo, Persist/Persist.pm,
+	Persist/Driver/DBI/PostgreSQL/PostgreSQL.pm,
+	Persist/Driver/DBI/PostgreSQL/t/1.t,
+	Persist/Driver/Memory/Memory.pm, Persist/Filter/Filter.pm,
+	Persist/t/1.t: Added REAL and TIMESTAMP data types.
+
+2003-06-13 17:16  hanenkamp
+
+	* ChangeLog, Persist/Persist.pm,
+	Persist/Driver/DBI/PostgreSQL/PostgreSQL.pm,
+	Persist/Driver/Memory/Memory.pm, Persist/t/1.t: Added support for
+	real numbers via the REAL constant and fixed a documentation bug in
+	Persist::Driver::Memory.
+
+2003-06-07 17:03  hanenkamp
+
+	* ChangeLog: Added the ChangeLog.
+
+2003-06-07 16:56  hanenkamp
+
+	* Bugs, ToDo, MANIFEST, Makefile.PL, README, Persist/MANIFEST,
+	Persist/Makefile.PL, Persist/Persist.pm,
+	Persist/Driver/Makefile.PL, Persist/Join/Join.pm,
+	Persist/Join/MANIFEST, Persist/Join/Makefile.PL,
+	Persist/Join/t/1.t, Persist/t/1.t, Persist/Driver/Driver.pm,
+	Persist/Driver/MANIFEST, Persist/Driver/DBI/MANIFEST,
+	Persist/Driver/DBI/Makefile.PL, Persist/Driver/t/1.t,
+	Persist/Driver/DBI/DBI.pm,
+	Persist/Driver/DBI/PostgreSQL/Makefile.PL,
+	Persist/Driver/DBI/PostgreSQL/test-config.pl,
+	Persist/Driver/DBI/t/1.t, Persist/Driver/DBI/PostgreSQL/MANIFEST,
+	Persist/Driver/DBI/PostgreSQL/PostgreSQL.pm,
+	Persist/Driver/DBI/PostgreSQL/test-config.pl.dist,
+	Persist/Driver/DBI/PostgreSQL/t/1.t,
+	Persist/Driver/Memory/Makefile.PL, Persist/Driver/Memory/MANIFEST,
+	Persist/Driver/Memory/Memory.pm, Persist/Driver/Memory/t/1.t,
+	Persist/Filter/Filter.pm, Persist/Filter/MANIFEST,
+	Persist/Filter/Makefile.PL, Persist/Filter/t/1.t,
+	Persist/Filter/t/.1.t.swp, Persist/Source/MANIFEST,
+	Persist/Source/Makefile.PL, Persist/Source/Source.pm,
+	Persist/Source/t/1.t, Persist/Table/MANIFEST,
+	Persist/Table/Makefile.PL, Persist/Table/Table.pm,
+	Persist/Table/t/1.t, Persist/Tabular/MANIFEST,
+	Persist/Tabular/Makefile.PL, Persist/Tabular/Tabular.pm,
+	Persist/Tabular/t/1.t: Initial revision
+
+2003-06-07 16:56  hanenkamp
+
+	* Bugs, ToDo, MANIFEST, Makefile.PL, README, Persist/MANIFEST,
+	Persist/Makefile.PL, Persist/Persist.pm,
+	Persist/Driver/Makefile.PL, Persist/Join/Join.pm,
+	Persist/Join/MANIFEST, Persist/Join/Makefile.PL,
+	Persist/Join/t/1.t, Persist/t/1.t, Persist/Driver/Driver.pm,
+	Persist/Driver/MANIFEST, Persist/Driver/DBI/MANIFEST,
+	Persist/Driver/DBI/Makefile.PL, Persist/Driver/t/1.t,
+	Persist/Driver/DBI/DBI.pm,
+	Persist/Driver/DBI/PostgreSQL/Makefile.PL,
+	Persist/Driver/DBI/PostgreSQL/test-config.pl,
+	Persist/Driver/DBI/t/1.t, Persist/Driver/DBI/PostgreSQL/MANIFEST,
+	Persist/Driver/DBI/PostgreSQL/PostgreSQL.pm,
+	Persist/Driver/DBI/PostgreSQL/test-config.pl.dist,
+	Persist/Driver/DBI/PostgreSQL/t/1.t,
+	Persist/Driver/Memory/Makefile.PL, Persist/Driver/Memory/MANIFEST,
+	Persist/Driver/Memory/Memory.pm, Persist/Driver/Memory/t/1.t,
+	Persist/Filter/Filter.pm, Persist/Filter/MANIFEST,
+	Persist/Filter/Makefile.PL, Persist/Filter/t/1.t,
+	Persist/Filter/t/.1.t.swp, Persist/Source/MANIFEST,
+	Persist/Source/Makefile.PL, Persist/Source/Source.pm,
+	Persist/Source/t/1.t, Persist/Table/MANIFEST,
+	Persist/Table/Makefile.PL, Persist/Table/Table.pm,
+	Persist/Table/t/1.t, Persist/Tabular/MANIFEST,
+	Persist/Tabular/Makefile.PL, Persist/Tabular/Tabular.pm,
+	Persist/Tabular/t/1.t: Initial import into it's own CVS repository.
+
+2003-06-07 16:56  hanenkamp
+
+	* Bugs, ToDo, MANIFEST, Makefile.PL, README, Persist/MANIFEST,
+	Persist/Makefile.PL, Persist/Persist.pm,
+	Persist/Driver/Makefile.PL, Persist/Join/Join.pm,
+	Persist/Join/MANIFEST, Persist/Join/Makefile.PL,
+	Persist/Join/t/1.t, Persist/t/1.t, Persist/Driver/Driver.pm,
+	Persist/Driver/MANIFEST, Persist/Driver/DBI/MANIFEST,
+	Persist/Driver/DBI/Makefile.PL, Persist/Driver/t/1.t,
+	Persist/Driver/DBI/DBI.pm,
+	Persist/Driver/DBI/PostgreSQL/Makefile.PL,
+	Persist/Driver/DBI/PostgreSQL/test-config.pl,
+	Persist/Driver/DBI/t/1.t, Persist/Driver/DBI/PostgreSQL/MANIFEST,
+	Persist/Driver/DBI/PostgreSQL/PostgreSQL.pm,
+	Persist/Driver/DBI/PostgreSQL/test-config.pl.dist,
+	Persist/Driver/DBI/PostgreSQL/t/1.t,
+	Persist/Driver/Memory/Makefile.PL, Persist/Driver/Memory/MANIFEST,
+	Persist/Driver/Memory/Memory.pm, Persist/Driver/Memory/t/1.t,
+	Persist/Filter/Filter.pm, Persist/Filter/MANIFEST,
+	Persist/Filter/Makefile.PL, Persist/Filter/t/1.t,
+	Persist/Filter/t/.1.t.swp, Persist/Source/MANIFEST,
+	Persist/Source/Makefile.PL, Persist/Source/Source.pm,
+	Persist/Source/t/1.t, Persist/Table/MANIFEST,
+	Persist/Table/Makefile.PL, Persist/Table/Table.pm,
+	Persist/Table/t/1.t, Persist/Tabular/MANIFEST,
+	Persist/Tabular/Makefile.PL, Persist/Tabular/Tabular.pm,
+	Persist/Tabular/t/1.t: Initial import into it's own CVS repository.
+	* Persistent/: All ChangeLog entries prior to this point were stored with
+	another project and Persist was named Persistent. This is the initial
+	revision where Persist is in it's own repository and it's name has been
+	changed to prevent namespace clobbering. Entires not pertaining to the
+	Persist project may not have been weeded out from this log.
+
+2003-05-31 20:06  hanenkamp
+
+	* Persistent/: Persistent.pm, Driver/DBI/DBI.pm,
+	Driver/DBI/PostgreSQL/PostgreSQL.pm, Driver/DBI/PostgreSQL/t/1.t,
+	Driver/Memory/Memory.pm, Filter/Filter.pm, Filter/MANIFEST,
+	Filter/Makefile.PL, Filter/t/1.t: Created a filter parser using
+	Parse::RecDescent and incorporated it into the DBI and PostgreSQL
+	drivers. Fixed some miscellaneous bugs as well.
+
+2003-05-31 20:04  hanenkamp
+
+	* Persistent/: Bugs, ToDo: New autogenerated files to help me keep
+	track of problems and such.
+
+2003-05-27 14:53  hanenkamp
+
+	* Persistent/: Driver/Memory/t/1.t, Join/Join.pm, Source/Source.pm:
+	Added support for explicit joins to Persistent.
+
+2003-05-27 14:51  hanenkamp
+
+	* Persistent/Driver/: DBI/PostgreSQL/t/1.t, Memory/Memory.pm: Added
+	support for explicit joins in Persistent.
+
+2003-05-27 14:50  hanenkamp
+
+	* Persistent/: Persistent.pm, Driver/Driver.pm, Driver/DBI/DBI.pm,
+	Driver/DBI/PostgreSQL/PostgreSQL.pm: Updated Persistent to support
+	explicit joins.
+
+2003-04-11 10:09  hanenkamp
+
+	* doc/exploration/: 1-soap.xml, 2-axkit.xml, 3-simplify.xml,
+	4-wsdl.xml, 5-codegen.xml, 6-simplify.xml, 7-interfacing.xml,
+	exploration.ent: Added first seven explorations.
+
+2003-03-07 12:20  hanenkamp
+
+	* ChangeLog, Persistent/Driver/Memory/Memory.pm,
+	Persistent/Table/t/1.t: Updated tests for Persistent::Tabular and
+	fixed bugs.
+
+2003-03-06 22:42  hanenkamp
+
+	* ChangeLog, Persistent/Driver/Memory/Memory.pm,
+	Persistent/Join/Join.pm, Persistent/Join/t/1.t,
+	Persistent/Table/Table.pm, Persistent/Tabular/Tabular.pm: Updated
+	tests for Persistent::Join and fixed bugs in Memory driver and
+	Persistent::Tabular related stuff.
+
+2003-03-06 14:05  hanenkamp
+
+	* ChangeLog, Persistent/Source/Source.pm, Persistent/Source/t/1.t:
+	Updated tests for Persistent::Source and fixed bugs.
+
+2003-03-06 13:39  hanenkamp
+
+	* ChangeLog, Persistent/Tabular/Tabular.pm: Updated documentation
+	for Persistent::Tabular.
+
+2003-03-06 13:27  hanenkamp
+
+	* ChangeLog, Persistent/Source/Source.pm,
+	Persistent/Table/Table.pm: Updated documentation for
+	Persistent::Table.
+
+2003-03-06 13:09  hanenkamp
+
+	* ChangeLog, Persistent/Source/Source.pm: Updated the documentation
+	for Persistent::Source.
+
+2003-03-06 12:32  hanenkamp
+
+	* ChangeLog, LICENSE, Contentlet/Blank/Blank.pm,
+	Contentlet/Lazy/Director/Director.pm, Contentlet/Lazy/User/User.pm,
+	Contentment/Contentment.pm, Contentment/Attributes/Attributes.pm,
+	Contentment/Contentlet/Contentlet.pm,
+	Contentment/Contentlet/Manager/Manager.pm,
+	Contentment/Director/Director.pm, Contentment/Format/Format.pm,
+	Contentment/Format/Text/Text.pm, Contentment/Test/Test.pm,
+	Contentment/User/User.pm, Persistent/Persistent.pm,
+	Persistent/Driver/Driver.pm, Persistent/Driver/DBI/DBI.pm,
+	Persistent/Driver/DBI/PostgreSQL/PostgreSQL.pm,
+	Persistent/Driver/Memory/Memory.pm, Persistent/Join/Join.pm: Fixed
+	documentation bugs.
+
+2003-03-06 11:59  hanenkamp
+
+	* ChangeLog, Persistent/Persistent.pm,
+	Persistent/Driver/Memory/Memory.pm: Updated Documentation for
+	Persistent and Persistent::Driver::Memory.
+
+2003-03-06 10:54  hanenkamp
+
+	* ChangeLog, Persistent/Driver/DBI/PostgreSQL/PostgreSQL.pm:
+	Updated documentation for Persistent::Driver::DBI::PostgreSQL.
+
+2003-03-06 10:17  hanenkamp
+
+	* ChangeLog, Persistent/Driver/Driver.pm,
+	Persistent/Driver/DBI/DBI.pm: Updated documentation for
+	Persistent::Driver::DBI.
+
+2003-03-05 23:27  hanenkamp
+
+	* Persistent/Driver/Driver.pm: Updated the documentation for
+	Persistent::Driver.
+
+2003-03-05 14:08  hanenkamp
+
+	* ChangeLog, LICENSE, Makefile.PL, README, localhost.conf,
+	Contentlet/Makefile.PL, Contentlet/Blank/Blank.pm,
+	Contentlet/Blank/MANIFEST, Contentlet/Blank/Makefile.PL,
+	Contentlet/Blank/t/1.t, Contentlet/Lazy/Makefile.PL,
+	Contentlet/Lazy/Director/Director.pm,
+	Contentlet/Lazy/Director/MANIFEST,
+	Contentlet/Lazy/Director/Makefile.PL,
+	Contentlet/Lazy/Director/t/1.t, Contentlet/Lazy/User/MANIFEST,
+	Contentlet/Lazy/User/Makefile.PL, Contentlet/Lazy/User/User.pm,
+	Contentlet/Lazy/User/t/1.t, Contentment/Contentment.pm,
+	Contentment/MANIFEST, Contentment/Makefile.PL,
+	Contentment/Attributes/Attributes.pm,
+	Contentment/Attributes/MANIFEST,
+	Contentment/Attributes/Makefile.PL, Contentment/Attributes/t/1.t,
+	Contentment/Contentlet/Contentlet.pm,
+	Contentment/Contentlet/MANIFEST,
+	Contentment/Contentlet/Makefile.PL,
+	Contentment/Contentlet/Manager/MANIFEST,
+	Contentment/Contentlet/Manager/Makefile.PL,
+	Contentment/Contentlet/Manager/Manager.pm,
+	Contentment/Contentlet/Manager/t/1.t, Contentment/Contentlet/t/1.t,
+	Contentment/Director/Director.pm, Contentment/Director/MANIFEST,
+	Contentment/Director/Makefile.PL, Contentment/Director/t/1.t,
+	Contentment/Format/Format.pm, Contentment/Format/MANIFEST,
+	Contentment/Format/Makefile.PL, Contentment/Format/Text/MANIFEST,
+	Contentment/Format/Text/Makefile.PL,
+	Contentment/Format/Text/Text.pm, Contentment/Format/Text/t/1.t,
+	Contentment/Format/t/1.t, Contentment/Test/MANIFEST,
+	Contentment/Test/Makefile.PL, Contentment/Test/Test.pm,
+	Contentment/Test/t/1.t, Contentment/Test/t/ContentletTest.pm,
+	Contentment/User/MANIFEST, Contentment/User/Makefile.PL,
+	Contentment/User/User.pm, Contentment/User/t/1.t,
+	Contentment/t/1.t, Contentment/t/localhost.conf,
+	Persistent/MANIFEST, Persistent/Makefile.PL,
+	Persistent/Persistent.pm, Persistent/ToDo,
+	Persistent/Driver/Driver.pm, Persistent/Driver/MANIFEST,
+	Persistent/Driver/Makefile.PL, Persistent/Driver/DBI/DBI.pm,
+	Persistent/Driver/DBI/MANIFEST, Persistent/Driver/DBI/Makefile.PL,
+	Persistent/Driver/DBI/PostgreSQL/MANIFEST,
+	Persistent/Driver/DBI/PostgreSQL/Makefile.PL,
+	Persistent/Driver/DBI/PostgreSQL/PostgreSQL.pm,
+	Persistent/Driver/DBI/PostgreSQL/test-config.pl,
+	Persistent/Driver/DBI/PostgreSQL/t/1.t,
+	Persistent/Driver/DBI/t/1.t, Persistent/Driver/Memory/MANIFEST,
+	Persistent/Driver/Memory/Makefile.PL,
+	Persistent/Driver/Memory/Memory.pm, Persistent/Driver/Memory/t/1.t,
+	Persistent/Driver/t/1.t, Persistent/Join/Join.pm,
+	Persistent/Join/MANIFEST, Persistent/Join/Makefile.PL,
+	Persistent/Join/t/1.t, Persistent/Source/MANIFEST,
+	Persistent/Source/Makefile.PL, Persistent/Source/Source.pm,
+	Persistent/Source/t/1.t, Persistent/Table/MANIFEST,
+	Persistent/Table/Makefile.PL, Persistent/Table/Table.pm,
+	Persistent/Table/t/1.t, Persistent/Tabular/MANIFEST,
+	Persistent/Tabular/Makefile.PL, Persistent/Tabular/Tabular.pm,
+	Persistent/Tabular/t/1.t, Persistent/t/1.t: Imported Contentment
+	0.1.0a from home server.
+
+2003-03-05 14:08  hanenkamp
+
+	* ChangeLog, LICENSE, Makefile.PL, README, localhost.conf,
+	Contentlet/Makefile.PL, Contentlet/Blank/Blank.pm,
+	Contentlet/Blank/MANIFEST, Contentlet/Blank/Makefile.PL,
+	Contentlet/Blank/t/1.t, Contentlet/Lazy/Makefile.PL,
+	Contentlet/Lazy/Director/Director.pm,
+	Contentlet/Lazy/Director/MANIFEST,
+	Contentlet/Lazy/Director/Makefile.PL,
+	Contentlet/Lazy/Director/t/1.t, Contentlet/Lazy/User/MANIFEST,
+	Contentlet/Lazy/User/Makefile.PL, Contentlet/Lazy/User/User.pm,
+	Contentlet/Lazy/User/t/1.t, Contentment/Contentment.pm,
+	Contentment/MANIFEST, Contentment/Makefile.PL,
+	Contentment/Attributes/Attributes.pm,
+	Contentment/Attributes/MANIFEST,
+	Contentment/Attributes/Makefile.PL, Contentment/Attributes/t/1.t,
+	Contentment/Contentlet/Contentlet.pm,
+	Contentment/Contentlet/MANIFEST,
+	Contentment/Contentlet/Makefile.PL,
+	Contentment/Contentlet/Manager/MANIFEST,
+	Contentment/Contentlet/Manager/Makefile.PL,
+	Contentment/Contentlet/Manager/Manager.pm,
+	Contentment/Contentlet/Manager/t/1.t, Contentment/Contentlet/t/1.t,
+	Contentment/Director/Director.pm, Contentment/Director/MANIFEST,
+	Contentment/Director/Makefile.PL, Contentment/Director/t/1.t,
+	Contentment/Format/Format.pm, Contentment/Format/MANIFEST,
+	Contentment/Format/Makefile.PL, Contentment/Format/Text/MANIFEST,
+	Contentment/Format/Text/Makefile.PL,
+	Contentment/Format/Text/Text.pm, Contentment/Format/Text/t/1.t,
+	Contentment/Format/t/1.t, Contentment/Test/MANIFEST,
+	Contentment/Test/Makefile.PL, Contentment/Test/Test.pm,
+	Contentment/Test/t/1.t, Contentment/Test/t/ContentletTest.pm,
+	Contentment/User/MANIFEST, Contentment/User/Makefile.PL,
+	Contentment/User/User.pm, Contentment/User/t/1.t,
+	Contentment/t/1.t, Contentment/t/localhost.conf,
+	Persistent/MANIFEST, Persistent/Makefile.PL,
+	Persistent/Persistent.pm, Persistent/ToDo,
+	Persistent/Driver/Driver.pm, Persistent/Driver/MANIFEST,
+	Persistent/Driver/Makefile.PL, Persistent/Driver/DBI/DBI.pm,
+	Persistent/Driver/DBI/MANIFEST, Persistent/Driver/DBI/Makefile.PL,
+	Persistent/Driver/DBI/PostgreSQL/MANIFEST,
+	Persistent/Driver/DBI/PostgreSQL/Makefile.PL,
+	Persistent/Driver/DBI/PostgreSQL/PostgreSQL.pm,
+	Persistent/Driver/DBI/PostgreSQL/test-config.pl,
+	Persistent/Driver/DBI/PostgreSQL/t/1.t,
+	Persistent/Driver/DBI/t/1.t, Persistent/Driver/Memory/MANIFEST,
+	Persistent/Driver/Memory/Makefile.PL,
+	Persistent/Driver/Memory/Memory.pm, Persistent/Driver/Memory/t/1.t,
+	Persistent/Driver/t/1.t, Persistent/Join/Join.pm,
+	Persistent/Join/MANIFEST, Persistent/Join/Makefile.PL,
+	Persistent/Join/t/1.t, Persistent/Source/MANIFEST,
+	Persistent/Source/Makefile.PL, Persistent/Source/Source.pm,
+	Persistent/Source/t/1.t, Persistent/Table/MANIFEST,
+	Persistent/Table/Makefile.PL, Persistent/Table/Table.pm,
+	Persistent/Table/t/1.t, Persistent/Tabular/MANIFEST,
+	Persistent/Tabular/Makefile.PL, Persistent/Tabular/Tabular.pm,
+	Persistent/Tabular/t/1.t, Persistent/t/1.t: Initial revision
+
+2003-03-05 13:55  sterling
+
+	* ChangeLog: Updated Changelog.
+
+2003-03-05 13:54  sterling
+
+	* ChangeLog, README, Contentment/Contentment.pm, Contentment/t/1.t,
+	Persistent/Source/Source.pm: Fixed some bugs relating to
+	configuration and Updated the README.
+
+2003-03-05 12:16  sterling
+
+	* ChangeLog: Updated the ChangeLog.
+
+2003-03-05 12:15  sterling
+
+	* ChangeLog, Contentment/User/User.pm, Contentment/User/t/1.t:
+	Updated documentation and tests.
+
+2003-03-05 10:21  sterling
+
+	* ChangeLog, Contentment/Format/Format.pm,
+	Contentment/Format/Text/Text.pm, Contentment/Format/Text/t/1.t,
+	Contentment/Format/t/1.t: Updated tests and documentation.
+
+2003-03-05 10:17  sterling
+
+	* Contentment/Director/t/1.t: Fixed a compile error.
+
+2003-03-05 10:14  sterling
+
+	* Contentment/Director/: Director.pm, t/1.t: Fixed a bug in the
+	tests and documentation using arrays instead of references for
+	Action->hidden.
+
+2003-03-05 09:30  sterling
+
+	* Persistent/Driver/Memory/t/1.t: Adding Memory tests for the first
+	time because of my cp -r mistake.
+
+2003-03-05 09:29  sterling
+
+	* Persistent/Driver/t/1.t: Duh, finally figured it out. Gotta watch
+	out when doing cp -r...
+
+2003-03-05 09:27  sterling
+
+	* Persistent/Driver/t/1.t: It did that weird thing again. Fixing
+	1.t...again.
+
+2003-03-05 09:24  sterling
+
+	* ChangeLog, Contentment/Director/Director.pm,
+	Contentment/Director/t/1.t: Updated documentation and test for
+	Contentment::Director.
+
+2003-03-05 09:01  sterling
+
+	* Contentment/Contentlet/Manager/: Manager.pm, t/1.t: Updated
+	documentation and tests for Contentlet Manager.
+
+2003-03-05 08:56  sterling
+
+	* ChangeLog, Contentment/Contentlet/Contentlet.pm: Updated
+	documentation for Contentment::Contentlet.
+
+2003-03-05 08:53  sterling
+
+	* ChangeLog, Contentlet/Blank/Blank.pm,
+	Contentlet/Lazy/Director/Director.pm,
+	Contentlet/Lazy/Director/t/1.t, Contentlet/Lazy/User/User.pm,
+	Contentlet/Lazy/User/t/1.t, Contentment/Attributes/Attributes.pm,
+	Contentment/Attributes/t/1.t: Updated tests and documentation for
+	Blank, Lazy Director, Lazy User, and Attributes.
+
+2003-03-04 15:46  sterling
+
+	* ChangeLog, Contentlet/Blank/Blank.pm, Contentlet/Blank/t/1.t:
+	Added tests and updated documentation for Contentlet::Blank
+
+2003-03-04 15:29  sterling
+
+	* ChangeLog, Contentlet/Lazy/Director/Director.pm,
+	Contentment/Contentment.pm, Contentment/Makefile.PL,
+	Contentment/t/1.t: Updated tests for Contentment.pm.
+
+2003-03-03 22:18  sterling
+
+	* ChangeLog, Persistent/Driver/DBI/PostgreSQL/t/1.t: Added a fix to
+	help prevent occasional bogus test failures.
+
+2003-03-03 22:16  sterling
+
+	* Contentlet/Lazy/Director/Director.pm,
+	Contentlet/Lazy/User/User.pm, Contentment/Contentlet/Contentlet.pm,
+	Contentment/Contentlet/Manager/Manager.pm,
+	Contentment/Contentlet/t/1.t, Contentment/Director/Director.pm,
+	Contentment/Test/MANIFEST, Contentment/Test/Makefile.PL,
+	Contentment/Test/Test.pm, Contentment/Test/t/1.t,
+	Contentment/Test/t/ContentletTest.pm: Moved Lazy and Blank
+	Contentlets and added Contentlet Testing framework.
+
+2003-03-02 16:30  sterling
+
+	* ChangeLog, LICENSE, Contentlet/Makefile.PL,
+	Contentlet/Blank/Blank.pm, Contentlet/Blank/MANIFEST,
+	Contentlet/Blank/Makefile.PL, Contentlet/Blank/t/1.t,
+	Contentlet/Lazy/Makefile.PL, Contentlet/Lazy/Director/Director.pm,
+	Contentlet/Lazy/Director/MANIFEST,
+	Contentlet/Lazy/Director/Makefile.PL,
+	Contentlet/Lazy/Director/t/1.t, Contentlet/Lazy/User/MANIFEST,
+	Contentlet/Lazy/User/Makefile.PL, Contentlet/Lazy/User/User.pm,
+	Contentlet/Lazy/User/t/1.t: Moved Contentlet implementations into
+	the Contentlet package.
+
+2003-03-02 15:36  sterling
+
+	* Contentment/: Attributes/Makefile.PL, Contentlet/Makefile.PL,
+	Contentlet/Manager/Makefile.PL, Format/Makefile.PL,
+	Format/Text/Makefile.PL, User/Makefile.PL: Fixed email address in
+	Makefiles.
+
+2003-03-02 15:32  sterling
+
+	* ChangeLog: Updated the ChangeLog
+
+2003-03-02 15:31  sterling
+
+	* Persistent/Driver/t/1.t: CVS patched this file to something it
+	shouldn't have. This returns the file to normal.
+
+2003-03-02 15:29  sterling
+
+	* Changes, Makefile, Contentment/Contentment.pm,
+	Contentment/Contentlet/Manager/t/1.t, Contentment/Contentlet/t/1.t:
+	Fixed up tests. Moved support from Contentment::Database to
+	Persistent::Source.
+
+2003-03-02 15:28  sterling
+
+	* Persistent/Driver/Memory/: MANIFEST, Makefile.PL, Memory.pm:
+	Added the rest of the files for the Memory driver.
+
+2003-03-02 15:26  sterling
+
+	* Contentment/: Makefile.PL, Director/Makefile.PL: Fixed up
+	Makefile info, esp. email address.
+
+2003-03-02 15:23  sterling
+
+	* ChangeLog: Updated the ChangeLog.
+
+2003-03-02 00:07  sterling
+
+	* Persistent/ToDo: Added the TODO list.
+
+2003-03-02 00:06  sterling
+
+	* Persistent/Driver/DBI/PostgreSQL/test-config.pl: Added test
+	configuration to PostgreSQL driver.
+
+2003-03-02 00:04  sterling
+
+	* Persistent/Driver/t/1.t: Fixed compile and other major bugs in
+	Memory driver.
+
+2003-03-01 13:26  sterling
+
+	* Persistent/: Driver/DBI/DBI.pm, Driver/DBI/PostgreSQL/t/1.t,
+	Source/Source.pm: Added non-compiled/untested simple Memory driver.
+
+2003-02-28 12:42  sterling
+
+	* Persistent/Driver/t/1.t: Added missing test.
+
+2003-02-28 12:41  sterling
+
+	* Persistent/: Makefile.PL, Persistent.pm, Driver/Driver.pm,
+	Driver/Makefile.PL, Driver/DBI/DBI.pm,
+	Driver/DBI/PostgreSQL/PostgreSQL.pm, Driver/DBI/PostgreSQL/t/1.t,
+	Driver/DBI/t/1.t, Join/Join.pm, Join/Makefile.PL, Join/t/1.t,
+	Source/t/1.t, Table/Makefile.PL, Table/Table.pm, Table/t/1.t,
+	Tabular/Makefile.PL, Tabular/Tabular.pm, Tabular/t/1.t, t/1.t:
+	Updated tests and fixed compile errors. PostgreSQL driver now
+	tested.
+
+2003-02-27 23:49  sterling
+
+	* Persistent/: MANIFEST, Makefile.PL, Persistent.pm,
+	Driver/Driver.pm, Driver/MANIFEST, Driver/Makefile.PL,
+	Driver/DBI/DBI.pm, Driver/DBI/MANIFEST, Driver/DBI/Makefile.PL,
+	Driver/DBI/PostgreSQL/MANIFEST, Driver/DBI/PostgreSQL/Makefile.PL,
+	Driver/DBI/PostgreSQL/PostgreSQL.pm, Driver/DBI/PostgreSQL/t/1.t,
+	Driver/DBI/t/1.t, Join/Join.pm, Join/MANIFEST, Join/Makefile.PL,
+	Join/t/1.t, Source/MANIFEST, Source/Makefile.PL, Source/Source.pm,
+	Source/t/1.t, Table/MANIFEST, Table/Makefile.PL, Table/Table.pm,
+	Table/t/1.t, Tabular/MANIFEST, Tabular/Makefile.PL,
+	Tabular/Tabular.pm, Tabular/t/1.t, t/1.t: Non-compiled/Non-tested
+	initial addition of Persistent.
+
+2003-02-22 18:35  sterling
+
+	* ChangeLog, Contentment/Format/Format.pm,
+	Contentment/Format/MANIFEST, Contentment/Format/README,
+	Contentment/Format/Text/MANIFEST, Contentment/Format/Text/README,
+	Contentment/Format/Text/Text.pm, Contentment/User/User.pm:
+	Reorganized the Lazy packages and fixed up the documentation.
+
+2003-02-22 14:03  sterling
+
+	* Contentment/Director/Director.pm: Added more documentation.
+
+2003-02-22 08:01  sterling
+
+	* Contentment/: Contentment.pm, Makefile.PL,
+	Attributes/Attributes.pm, Contentlet/Contentlet.pm,
+	Contentlet/Manager/Manager.pm: Updated documentation and dropping
+	Contentment::Database and friends in favor of Persistent framework.
+
+2003-02-21 15:42  sterling
+
+	* ChangeLog, README: Added the ChangeLog.
+
+2003-02-21 15:14  sterling
+
+	* Makefile.PL: Revised for better version numbers.
+
+2003-02-21 15:05  sterling
+
+	* Makefile.PL: Initial Perl Makefile.
+
+2003-02-21 09:28  sterling
+
+	* Contentment/: Contentment.pm, Contentlet/Manager/Manager.pm,
+	Director/Director.pm, Format/Format.pm, Format/Text/Text.pm,
+	User/User.pm: It Works! Yippee...I now have a functional
+	foundation. (Probably buggy.)
+
+2003-02-20 23:27  sterling
+
+	* Contentment/: Contentment.pm, Contentlet/Manager/Manager.pm,
+	Director/Director.pm, User/User.pm: Worked out bugs and fixing
+	inconsistencies.
+
+2003-02-20 13:41  sterling
+
+	* extras/contentlet.vim: Removed even more old files.
+
+2003-02-20 13:38  sterling
+
+	* Makefile, Contentment/Contentment.pm,
+	Contentment/Contentlet/Manager/Manager.pm,
+	Contentment/Director/Director.pm, Contentment/User/User.pm: Fixed
+	compilation errors.
+
+2003-02-20 09:50  sterling
+
+	* LICENSE, Contentment/Contentlet/Contentlet.pm: Updated the
+	license, fixed some issues left over from previous revs.
+
+2003-02-14 16:20  sterling
+
+	* Contentment/Contentment.pm: Fixed Contentment...for some reason
+	CVS resurrected an old version.
+
+2003-02-13 18:21  sterling
+
+	* Contentment/: Contentment.pm, Attributes/Attributes.pm,
+	Attributes/MANIFEST, Contentlet/Manager/MANIFEST,
+	Contentlet/Manager/Manager.pm: Fixed make problems and removed
+	unused directories and contents.
+
+2003-02-12 15:57  sterling
+
+	* Contentment/: Contentlet/Contentlet.pm, Director/Director.pm,
+	Format/Format.pm, Format/MANIFEST, Format/Makefile.PL,
+	Format/README, Format/Text/MANIFEST, Format/Text/Makefile.PL,
+	Format/Text/README, Format/Text/Text.pm, Format/Text/t/1.t,
+	Format/t/1.t, User/User.pm: Added format interface and text
+	formatter.
+
+2003-02-10 14:02  sterling
+
+	* Contentment/User/User.pm: Small bugs fixed.
+
+2003-02-10 14:01  sterling
+
+	* Contentment/: Attributes/Attributes.pm, Attributes/MANIFEST,
+	Attributes/Makefile.PL, Attributes/t/1.t, Contentlet/Contentlet.pm,
+	Contentlet/Manager/MANIFEST, Contentlet/Manager/Makefile.PL,
+	Contentlet/Manager/Manager.pm, Contentlet/Manager/t/1.t,
+	Director/Director.pm, User/MANIFEST, User/Makefile.PL,
+	User/User.pm, User/t/1.t: Totally refactored the system. This takes
+	in new ideas for what Contentlets are, what should be a Contentlet,
+	and how the system works. This has not been tested that it
+	compiles--I can pretty much guarantee it will not.
+
+2003-02-08 23:41  sterling
+
+	* LICENSE: Added the license.
+
+2003-02-05 16:27  sterling
+
+	* extras/contentlet.vim: Updated syntax highlighting.
+
+2003-01-30 17:56  sterling
+
+	* extras/contentlet.vim: Fixed a few minor issues.
+
+2003-01-30 16:04  sterling
+
+	* extras/contentlet.vim: Added syntax highlighting file to vim for
+	contentlet specifications.
+
+2003-01-30 10:57  sterling
+
+	* Contentment/Contentlet/: Contentlet.pm, MANIFEST, Makefile.PL,
+	t/1.t: Started the Contentlet manager.
+
+2003-01-12 19:48  sterling
+
+	* Contentment/: MANIFEST, Makefile.PL, Director/Director.pm,
+	Director/Makefile.PL, Director/t/1.t, t/1.t: Reorg because I have
+	been lazy.
+
+2003-01-12 19:42  sterling
+
+	* Makefile: Updating the repository, this is abysmal; I let this
+	get too disorganized.
+
+2002-10-15 23:49  sterling
+
+	* Makefile, Contentment/Contentment.pm, Contentment/MANIFEST,
+	Contentment/Makefile.PL, Contentment/Director/Director.pm,
+	Contentment/t/1.t: Added most of the basics, including the document
+	formatter and the configuration loader.
+
+2002-10-13 23:47  sterling
+
+	* Changes, Makefile, README, Contentment/Director/Director.pm,
+	Contentment/Director/MANIFEST, Contentment/Director/Makefile.PL,
+	Contentment/Director/t/1.t: Initial version.
+
+2002-10-13 23:47  sterling
+
+	* Changes, Makefile, README, Contentment/Director/Director.pm,
+	Contentment/Director/MANIFEST, Contentment/Director/Makefile.PL,
+	Contentment/Director/t/1.t: Initial revision
+

@@ -1,0 +1,18 @@
+1. [./Persist/Persist.pm] For this documentation (or somewhere) list those
+   keywords that should be avoided because they are a part of ANSI SQL or a
+   specific driver's implementation--that is, they shouldn't be used for
+   table or column names.
+2. [./Persist/Table/Table.pm] When calling save add checking to make sure
+   such a call is legal.
+3. [./Persist/Filter/Filter.pm] Add documentation for Persist::Filter::AST
+   stuff.
+4. [./Persist/Driver/Driver.pm] We need an API to allow for the discovery
+   of what parameters are necessary for creating/deleting/connecting to
+   sources. Perhaps something similar to a table definition to take
+   advantage of our metadata system.
+5. [./Persist/Driver/Driver.pm] Design a way for update to perform a
+   filtered update. That is, it would be nifty to do something like
+   update('table', value => sub { $_ + 1 }) or something similar that could
+   be used by the back-end in the most appropriate way.
+6. [./Persist/Driver/DBI/PostgreSQL/PostgreSQL.pm] Use common conversion
+   methods to convert to/from PostgreSQL/Persist versions of strings.
