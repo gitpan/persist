@@ -10,7 +10,7 @@ use Persist qw(:constants);
 use Persist::Filter;
 use Persist::Driver;
 
-our ( $VERSION ) = '$Revision: 1.6 $' =~ /\$Revision:\s+(\S+)/;
+our ( $VERSION ) = '$Revision: 1.7 $' =~ /\$Revision:\s+(\S+)/;
 our @ISA = qw( Persist::Driver );
 
 # FIXME Because of the nature of the way it is represented in string format,
@@ -447,11 +447,16 @@ sub delete {
 	}
 
 	my $closure = _filter_closure(1, $rewritten);
-	
-	my $orig_count = scalar(@{$self->{-data}{$name}});
-	my @unmatched = grep { not &$closure($_) } @{$self->{-data}{$name}};
-	my $changed = $orig_count - @unmatched;
-	$self->{-data}{$name} = [ @unmatched ];
+
+	my $changed;
+	if (defined $self->{-data}{$name}) {
+		my $orig_count = scalar(@{$self->{-data}{$name}});
+		my @unmatched = grep { not &$closure($_) } @{$self->{-data}{$name}};
+		$changed = $orig_count - @unmatched;
+		$self->{-data}{$name} = [ @unmatched ];
+	} else {
+		$changed = 0;
+	}
 	
 	$changed;
 }

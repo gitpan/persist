@@ -27,6 +27,7 @@ Persist/Driver/Memory/Memory.pm
 Persist/Driver/Memory/t/autonumber.t
 Persist/Driver/Memory/t/boolean.t
 Persist/Driver/Memory/t/create.t
+Persist/Driver/Memory/t/delete_from_none.t
 Persist/Driver/Memory/t/init.t
 Persist/Driver/Memory/t/insert_update_delete.t
 Persist/Driver/Memory/t/integer.t

@@ -8,7 +8,7 @@ use ExtUtils::MakeMaker;
 #
 # This is used by ../Makefile.PL for version information for the entire
 # package and for the PPD.
-our $VERSION_TAG = '$Name: persist-0_3_1 $';
+our $VERSION_TAG = '$Name: persist-0_3_2 $';
 our $VERSION_REV = '$Revision: 1.7 $';
 our $VERSION;
 

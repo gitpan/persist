@@ -1,3 +1,18 @@
+2003-07-26 16:40  hanenkamp
+
+	* MANIFEST, Persist/Driver/Memory/Memory.pm,
+	Persist/Driver/Memory/t/delete_from_none.t: Fixed Memory driver bug
+	that caused an exception when deleting from an empty table.
+
+2003-07-22 23:04  hanenkamp
+
+	* Makefile.PL: Fixed a versioning bug.
+
+2003-07-22 23:00  hanenkamp
+
+	* Bugs, ChangeLog, README, ToDo: Updated README and other top level
+	documentation.
+
 2003-07-22 22:42  hanenkamp
 
 	* Persist/: Source/t/source.t, Table/t/table.t: Removed handled

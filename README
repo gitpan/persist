@@ -22,7 +22,7 @@ library was originally designed for use supporting web-based tools where
 performance is important--particularly for queries--but ultra-high
 performance isn't generally required.
 
-RELEASE NOTES (0.3.1)
+RELEASE NOTES (0.3.2)
 
 At this point, the API has pretty well stabilized. There have been some
 additions, but few changes. Some changes are coming--particularly with
@@ -51,6 +51,10 @@ driver that has really been built with the intent of actual use.  It
 supports all functionality of Persist via a PostgreSQL system including
 DBA calls, if a DBA user is available. It is still a little unreliable
 and also requires version 7.3 or later of PostgreSQL.
+
+The 0.3.2 is an very small increment from 0.3.1 mostly because of a show
+stopping bug in the Memory driver that effects the new Contentment test
+system.
 
 INSTALLATION
 
