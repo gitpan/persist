@@ -1,17 +1,14 @@
 # vim: set ft=perl :
 
-use Test::More;
+use English;
+use Test::More tests => 10;
+use Persist::Test ':driver';
 
-use lib "$ENV{PWD}";
-require 'testsetup';
+my $driver = init;
 
-plan tests => 10 unless $skippg;
-plan skip_all => $skippg if $skippg;
-
+my $folks = 0;
+my $favorites = 0;
 eval {
-	@conn = &pgconn(); shift @conn;
-	$driver = new Persist::Driver::DBI::PostgreSQL(@conn);
-
 	ok($driver->create_table(@folks), 'Create a table.');
 	ok($driver->create_table(@favorites), 'Create a table.');
 
@@ -30,12 +27,20 @@ eval {
 	is_deeply(\@results, $favorites[5], 'Correct index structure.');
 
 	ok($driver->delete_table(-table => 'favorites'), 'Delete a table.');
+	$favorites = 0;
 	ok($driver->delete_table(-table => 'folks'), 'Delete a table.');
+	$folks = 0;
 
 };
 
-if ($@) {
-	diag("Test error. Attempting cleanup: $@");
+if ($EVAL_ERROR) {
+	diag("Test error. Attempting cleanup: $EVAL_ERROR");
 }
 
-require 't/pgcleanup';
+if ($favorites) {
+	$driver->delete_table(-table => 'favorites');
+}
+
+if ($folks) {
+	$driver->delete_table(-table => 'folks');
+}

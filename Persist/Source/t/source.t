@@ -23,10 +23,10 @@ for $source (@sources) {
 		ok(grep(/^(?:favorites|folks)$/, $source->tables) == 2, 'Tables.');
 
 		ok(defined $source->join([ 'favorites', 'folks' ]), 'Join tables.');
-		ok(defined $source->explicit_join(
-						[ o => 'folks', a => 'favorites' ],
-						'o.fid = a.fid',
-						"a.color = 'purple'"), 'Explicitly join tables.');
+		ok(defined $source->join(
+						[ 'folks','favorites' ],
+						'1.fid = 2.fid',
+						"color = 'purple'"), 'Explicitly join tables.');
 
 		ok(defined $source->table('folks'), 'Table.');
 		ok(defined $source->folks, 'Folks.');

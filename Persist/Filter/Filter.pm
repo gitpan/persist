@@ -47,6 +47,8 @@ either of the boolean operators C<AND> or C<OR>. Each comparison expression
 may be preceded by the boolean operator C<NOT> to invert the result as well.
 Parentheses may be used to group tests together.
 
+=head3 COMPARISON OPERATORS
+
 The comparison operators available are:
 
   * Equivalence (=)
@@ -66,11 +68,13 @@ side of the expression as a match expression and the left as a literal string.
 Not all drivers may implement C<LIKE> and C<ILIKE> with the capability of using
 a column name as a matching expression.
 
-As an alternative to literal values a question mark (?) may be used as
-a place holder for a literal value. This may only be done when the
-method the filter is passed to also accepts a reference to an array of
-bindings. Each element of the binding will be used to replace the
-question mark place holder in order of appearance.
+=head3 PLACEHOLDERS
+
+As an alternative to literal values a question mark (?) may be used as a place
+holder for a literal value. This may only be done when the method the filter is
+passed to also accepts a reference to an array of bindings. Each element of the
+binding will be used to replace the question mark place holder in order of
+appearance.
 
 For example, given the filter:
 
@@ -84,8 +88,26 @@ we effectively have:
 
   foo = 'hello' AND bar = 'world'
 
-This should be obvious to anyone familiar with most SQL database APIs 
-like L<DBI>.
+This should be obvious to anyone familiar with most SQL database APIs like
+L<DBI>.
+
+=head3 IDENTIFIERS
+
+Identifiers may be in either C<name> or C<name.name> format. Usually, the former
+is preferred, but the latter may be required where C<name> is ambiguous. (This
+happens when filtering on a table join where two of the joined tables have
+columns with the same name.) When the C<name.name> format is used, the first
+name identifies the table and the second identifies the column.
+
+Table identifiers are either the name of the table (as given to the appropriate
+method), a number for the index the name (as given), or the name of the table
+and number of that table's occurance. That is, if C<[ 'A', 'B', 'A' ]> were
+passed as the tables to a method using a filter, then a table name of "1"
+identifies the first occurance of "A", "2" identifies the "B" table, and "3"
+identifies the third "A". Or, "A" is an ambiguous table name, so it cannot be
+used and "B" identifies the "B" table. Or, "A1" identifies the first "A", "B1"
+identifies the "B" table, and "A2" identifies the second "A" table. Each of
+these nomenclatures can be mixed as needed or desired.
 
 =head2 HELPER METHODS
 
@@ -234,7 +256,7 @@ our @EXPORT = qw(
 	parse_filter unparse_filter
 );
 
-our ($VERSION) = '$Revision: 1.9 $' =~ /\$Revision:\s+(\S+)/;
+our ($VERSION) = '$Revision: 1.11 $' =~ /\$Revision:\s+(\S+)/;
 
 =head2 AST CLASS HEIRARCHY
 
@@ -494,6 +516,8 @@ comp_op:	'=' | '<>' | /<=?/ | />=?/
 
 identifier:	name '.' name 
 			{ $return = new Persist::Filter::Identifier("$item[1].$item[3]") }
+		|	integer '.' name
+			{ $return = new Persist::Filter::Identifier("$item[1].$item[3]") }
 		|	name
 			{ $return = new Persist::Filter::Identifier($item[1]) }
 
@@ -508,6 +532,8 @@ placeholder: '?'
 name:		/[a-z_][a-z0-9_]*/i
 
 string:		"'" char(s) "'" { $return = "'".(join '', @{$item[2]})."'" }
+
+integer:	/\d+/
 
 number:		/[+-]?[0-9]*\.[0-9]+(?:e[+-]?[0-9]+)?/i { $return = lc($item[1]) }
 		|	/[+-]?[0-9]+\.?(?:e[+-]?[0-9]+)?/i { $return = lc($item[1]) }

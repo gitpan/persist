@@ -27,7 +27,8 @@ for $src (@sources) {
 			}
 		}
 
-		ok(our $join = $src->join([ 'folks', 'favorites' ], [ undef, "color = 'green'" ]), 'Join.');
+		ok(our $join = $src->join([ 'folks', 'favorites' ], 
+								  -filter => "color = 'green'"), 'Join.');
 
 		$join->next;
 		is($join->name, 'Sterling', 'Sterling likes green.');
@@ -38,7 +39,7 @@ for $src (@sources) {
 		$join->first;
 		is($join->name, 'Sterling', 'Sterling likes green again.');
 
-		$join->filter([ 'age > 40' ]);
+		$join->filter('age > 40');
 		$join->next;
 		is($join->name, 'Gregg', 'Gregg is over 40.');
 		$join->next;

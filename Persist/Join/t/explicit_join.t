@@ -27,10 +27,10 @@ for $src (@sources) {
 			}
 		}
 
-		ok(our $join = $src->explicit_join(
-					[ o => 'folks', a => 'favorites' ],
-					'o.fid = a.fid',
-					"a.color = 'green'"), 'Join.');
+		ok(our $join = $src->join(
+					-tables => [ 'folks', 'favorites' ],
+					-on     => 'folks.fid = favorites.fid',
+					-filter => "color = 'green'"), 'Join.');
 
 		$join->next;
 		is($join->name, 'Sterling', 'Sterling likes green.');
@@ -41,7 +41,7 @@ for $src (@sources) {
 		$join->first;
 		is($join->name, 'Sterling', 'Sterling likes green again.');
 
-		$join->filter('o.age > 40');
+		$join->filter('age > 40');
 		$join->next;
 		is($join->name, 'Gregg', 'Gregg is over 40.');
 		$join->next;

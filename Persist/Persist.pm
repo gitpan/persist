@@ -16,6 +16,7 @@ our %EXPORT_TAGS = (
 	'constants' => [ qw(
 		VARCHAR INTEGER AUTONUMBER BOOLEAN REAL TIMESTAMP
 		PRIMARY UNIQUE LINK
+		ASCENDING DESCENDING ASC DESC
 	) ],
 	'driver_help' => [ qw(
 		croak carp
@@ -27,7 +28,7 @@ our @EXPORT_OK = (
 	@{ $EXPORT_TAGS{'driver_help'} },
 );
 
-our $VERSION = '0.5.1';
+our $VERSION = '0.5.2';
 
 =head1 NAME
 
@@ -45,8 +46,9 @@ If you are looking for usage information related to I<Persist> the best
 starting place is L<Persist::Source>.
 
 This class contains constants and help functions for the Persist framework.
-There are two sets of constants: types and indexes. The helper functions are
-described below.
+There are currently three sets of constants: types, indexes, and orders. The
+helper functions are intended for use by the drivers and are described further
+on below.
 
 =head2 TYPES
 
@@ -173,6 +175,43 @@ For example,
 =cut
 
 use constant LINK			=> 2;
+
+=back
+
+=head2 ORDERS
+
+The orders are used in parameter lists passed to filtering methods. These
+parameters are used to specify in which order records are to be returned. These
+constants are then inserted as modifiers after a column name to tell the system
+that the columns should be sorted in ascending or descending order. By default,
+orders are always in ascending order, so specifying the C<ASC> or C<ASCENDING>
+constants are redundant, but sometimes helpful.
+
+=over
+
+=item ASC
+=item ASCENDING
+
+These constants signal that the previous column in a list of columns passed to
+the "order" parameter of a filtering method are supposed to be sorted in
+ascending order--the default.
+
+=cut
+
+use constant ASC		=> 1;
+use constant ASCENDING	=> 1;
+
+=item DESC
+=item DESCENDING
+
+These constants signal that the previous column in a list of columns passed to
+the "order" parameter of a filtering method are supposed to be sorted in
+descending, rather than ascending, order.
+
+=cut
+
+use constant DESC		=> -1;
+use constant DESCENDING	=> -1;
 
 =back
 

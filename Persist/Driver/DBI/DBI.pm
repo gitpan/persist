@@ -10,7 +10,7 @@ use Persist::Filter;
 
 our @ISA = qw(Persist::Driver);
 
-our ( $VERSION ) = '$Revision: 1.10 $' =~ /\$Revision:\s+([^\s]+)/;
+our ( $VERSION ) = '$Revision: 1.14 $' =~ /\$Revision:\s+([^\s]+)/;
 
 =head1 NAME
 
@@ -154,15 +154,33 @@ See L<Persist::Driver> for a description of the arguments.
 sub open_table {
 	my ($self, %args) = @_;
 	
-	my ($table, $filter) = @args{qw(-table -filter)};
+	my ($table, $filter, $order, $offset, $limit) = 
+		@args{qw(-table -filter -order -offset -limit)};
 
 	my $pp_filter;
-	$pp_filter = $self->preprocess_filter(-aliases => {$table => $table}, -filter => $filter) 
+	$pp_filter = $self->preprocess_filter(-aliases => [ $table ], -filter => $filter) 
 			if $filter;
 #debug#	print STDERR $pp_filter,"\n";
 
 	my $sql = "SELECT * FROM $table";
-	$sql .= " WHERE $pp_filter" if $filter;
+	$sql .= " WHERE $pp_filter" if defined $filter;
+
+	if (defined $order) {
+		my @columns;
+		for (my $i = 0; $i < @$order; ++$i) {
+			my $column = $$order[$i];
+			if ($i < $#$order and ($$order[$i] == ASCENDING or $$order[$i] == DESCENDING)) {
+				push @columns, $column.' '.($$order[++$i] == ASCENDING ? 'ASC' : 'DESC');
+			} else {
+				push @columns, $column;
+			}
+		}
+
+		$sql .= " ORDER BY ".join(', ', @columns);
+	}
+
+	$sql .= " OFFSET ".$offset if defined $offset;
+	$sql .= " LIMIT ".$limit if defined $limit;
 	
 	my $sth = $self->handle->prepare($sql);
 	$sth->execute;
@@ -188,177 +206,212 @@ See L<Persist::Driver> for a description of the arguments.
 
 =cut
 
+# determines if there is a path from $x to $y
+sub _has_path {
+	my ($self, $g, $x, $y) = @_;
+	
+	my %seen = ( $x => 1 );
+	my @traverse = ( $g->successors($x) );
+	while (@traverse) {
+		my $vertex = shift @traverse;
+		
+		return 1 if $vertex eq $y;
+		
+		next if $seen{$vertex};
+		
+		$seen{$vertex}++;
+		push @traverse, $g->successors($vertex);
+	}
+
+	return 0;
+}
+
+sub _rewrite_filter {
+	my ($self, $columns, $filter) = @_;
+
+	# We need to parse the filter
+	my $ast = parse_filter($filter);
+
+	# Walk the tree and convert any identifiers to the appropriate columns and
+	# change each comparison operator to the appropriate type.
+	$ast->remap_on('Persist::Filter::Comparison', sub {
+		(my $a, local $_, my $b) = @{$_[0]};
+
+		for my $id ($a, $b) {
+			if ($id->isa('Persist::Filter::Identifier')) {
+				croak "Use of unknown column name $$id in filter" unless exists $$columns{$$id};
+				croak "Use of ambiguous column name $$id in filter" unless defined $$columns{$$id};
+				$$id = $$columns{$$id};
+			}
+		}
+
+	});
+
+	return $ast->unparse;
+}
+
 sub open_join {
 	my ($self, %args) = @_;
-	my ($tables, $filter) = @args{qw(-tables -filter)};
+	my ($tables, $filter, $on, $order, $offset, $limit) = 
+		@args{qw(-tables -filter -on -order -offset -limit)};
 
-	# Setup SELECT and column name prefixes
+	# Setup SELECT
 	my $sql = "SELECT ";
-	my @aliased;
-	my %table_name;
-	my $i = 0;
-	my @table_schema_names;
-	for my $table (@$tables) {
-		if (ref $table) {
-			my ($name, $prefix) = @$table;
-			push @table_schema_names, $name;
-			$table_name{$name} = "t$i";
-			my %flds = $self->columns(-table => $name);
-			push @aliased, map { "t$i.$_ as ${prefix}_$_" } keys(%flds);
-		} else {
-			push @table_schema_names, $table;
-			$table_name{$table} = "t$i";
-			push @aliased, "t$i.*";
+	my @table_columns;
+	my @table_aliases = map { "t$_" } (1 .. @$tables);
+	my $column_count = 0;
+	my $columns;
+	my @select;
+	my %seen;
+	for my $i (0 .. $#$tables) {
+		my $name = $$tables[$i];
+		my $table_num = ++$seen{$name};
+		my %columns = $self->columns(-table => $name);
+		my @column_names = keys %columns;
+		
+		for my $j (0 .. $#column_names) {
+			my $column = $column_names[$j];
+				
+			my $to = "$table_aliases[$i].$column";
+
+			for my $prefix ('', ($i + 1).".", "$name.", "$name$table_num.") {
+				if (defined $$columns{"$prefix$column"}) {
+					$$columns{"$prefix$column"} = undef; # exists but not defined
+					next;
+				} 
+				
+				$$columns{"$prefix$column"} = $to;
+			}
 		}
-		++$i;
+
+		my $start = $column_count;
+		push @table_columns, 
+			[ \@column_names, [ $start, ($column_count += @column_names) - 1 ] ];
+		push @select, map({ "$table_aliases[$i].$_" } @column_names);
 	}
 
 	# Setup FROM and JOINs; if the columns have circular references, then we
 	# will not "close the loop" when joining tables together
-	$sql .= join(',', @aliased) . " FROM ";
+	$sql .= join(', ', @select)." FROM ";
 
-	my %joined;
-	for my $table (@$tables) {
-		my $name = ref $table ? $table->[0] : $table;
+	if (defined $on) {
+		# This join is explicit, insert each on expression given between each
+		# table in the FROM clause
+		$on = [ $on ] unless ref $on;
+		$sql .= "$$tables[0] $table_aliases[0]";
+		for my $i (1 .. $#$tables) {
+			$sql .= " INNER JOIN $$tables[$i] $table_aliases[$i]";
+			if (defined $$on[$i - 1]) {
+				$sql .= " ON ".$self->_rewrite_filter($columns, $$on[$i - 1]);
+			}
+		}
+	} else {
+		# Let's implicitly join these suckers
+		#
+		# FIXME The implicit join operation should be moved up into
+		# Persist::Driver as it should be essentially the same from driver to
+		# driver. We just have to figure out the filters to join at the
+		# Persist::Driver level and then provide them as an explicit join to
+		# each implementation.
+		my %joinees;
+		for my $i (0 .. $#$tables) {
+			croak "Cannot implicitly join a table to itself; use the -on option instead."
+				if $joinees{$$tables[$i]};
+			$joinees{$$tables[$i]} = $i;
+		}
+
+		my %joined;
+		for my $i (0 .. $#$tables) {
+			my $name = $$tables[$i];
 		
-		my @indexes = $self->indexes(-table => $name);
-		for my $index (@indexes) {
-			if ($index->[0] == LINK) {
-				my $lflds = $index->[1];
-				my $fname = $index->[2];
-				my $rflds = $index->[3];
-				# make sure the foreign table is to be joined
-				if ($table_name{$fname}) {
-					if (not ($joined{$name} or $joined{$fname})) {
-						$sql .=
-							("$name $table_name{$name} INNER JOIN ".
-							"$fname $table_name{$fname} ON ".
-							join(' AND ', 
-								map { "$table_name{$name}.$lflds->[$_] = $table_name{$fname}.$rflds->[$_]" }
-									0 .. $#$lflds));
-						$joined{$name} = 1;
-						$joined{$fname} = 1;
-					} elsif (not $joined{$name} and $joined{$fname}) {
-						$sql .=
-							(" INNER JOIN $name $table_name{$name} ON ".
-							join(' AND ',
-								map { "$table_name{$name}.$lflds->[$_] = $table_name{$fname}.$rflds->[$_]" }
-									0 .. $#$lflds));
-						$joined{$name} = 1;
-					} elsif ($joined{$name} and not $joined{$fname}) {
-						$sql .=
-							(" INNER JOIN $fname $table_name{$fname} ON ".
-							join(' AND ',
-								map { "$table_name{$name}.$lflds->[$_] = $table_name{$fname}.$rflds->[$_]" }
-									0 .. $#$lflds));
-						$joined{$fname} = 1;
-					} # else ignore
+			# Loop through
+			my @indexes = $self->indexes(-table => $name);
+			for my $index (@indexes) {
+				if ($index->[0] == LINK) {
+					my $lflds = $index->[1];
+					my $fname = $index->[2];
+					my $rflds = $index->[3];
+
+					if (defined $joinees{$fname}) {
+						my $table1  = $table_aliases[$i];
+						my $table2  = $table_aliases[$joinees{$fname}];
+						if (not ($joined{$name} or $joined{$fname})) {
+							$sql .=
+								("$name $table1 INNER JOIN ".
+								"$fname $table2 ON ".
+								join(' AND ', 
+									map { "$table1.$$lflds[$_] = $table2.$$rflds[$_]" }
+										0 .. $#$lflds));
+							$joined{$name} = 1;
+							$joined{$fname} = 1;
+						} elsif (not $joined{$name} and $joined{$fname}) {
+							$sql .=
+								(" INNER JOIN $name $table1 ON ".
+								join(' AND ',
+									map { "$table1.$$lflds[$_] = $table2.$$rflds[$_]" }
+										0 .. $#$lflds));
+							$joined{$name} = 1;
+						} elsif ($joined{$name} and not $joined{$fname}) {
+							$sql .=
+								(" INNER JOIN $fname $table2 ON ".
+								join(' AND ',
+									map { "$table1.$$lflds[$_] = $table2.$$rflds[$_]" }
+										0 .. $#$lflds));
+							$joined{$fname} = 1;
+						} # else ignore
+					}
 				}
 			}
 		}
-	}
 
-	# Catch any remaining tables that aren't directly JOINED--which should
-	# be used cautiously as this performs cross-product relational 
-	# multiplication
-	for my $table (@$tables) {
-		my $name = ref $table ? $table->[0] : $table;
-		unless ($joined{$name}) {
-			$sql .= ',' if %joined;
-			$sql .= "$name $table_name{$name}";
-			$joined{$name} = 1;
-		}
-	}
-
-	# At this point we are SELECTed and FROMed. Now, we see if there is a 
-	# filter for WHEREing.
-	if ($filter) {
-		for ($i = 0; $i < @$filter; ++$i) {
-			if (defined $filter->[$i]) {
-				my $ast = parse_filter($filter->[$i]);
-				my $name = ref $tables->[$i] ? $tables->[$i][0] : $tables->[$i];
-				$ast->remap_on('Persist::Filter::Identifier', 
-					sub { my $col = shift; $$col = "$table_name{$name}.$$col" });
-				$filter->[$i] = $ast->unparse;
+		# Catch any remaining tables that aren't directly JOINED--which should be
+		# used cautiously as this performs cross-product relational multiplication
+		for my $i (0 .. $#$tables) {
+			my $name = $$tables[$i];
+			unless ($joined{$name}) {
+				$sql .= ',' if %joined;
+				$sql .= "$name $table_aliases[$i]";
+				$joined{$name} = 1;
 			}
 		}
-	}
 
-	if ($filter) {
-		my $where = $self->preprocess_filter(
-				-aliases => { reverse(%table_name) },
-				-filter => join(" AND ", map { $_ ? $_ : () } @$filter)
-		);
-		$sql .= " WHERE ".$where;
-	}
-
-	# And we are done.
-	my $sth = $self->handle->prepare($sql);
-	$sth->execute;
-	[ [ @table_schema_names ], $sth ];
-}
-
-=item $handle = $driver-E<gt>open_explicit_join(%args)
-
-Returns an array reference of the same form returned by C<open_join>.  The
-tables are joined using an C<INNER JOIN> expression with the C<ON> clauses
-specified by the user. The filter is processed by C<preprocess_filter> prior to
-being used in the C<WHERE> clause.
-
-As in C<open_join>, the C<ON> expressions are not preprocessed. This is, again,
-not yet considered a bug, but will be if it is discovered that this behavior is
-problematic. Since the C<ON> expressions are specified by the user rather than
-by this package definition, it is much more likely that this will have
-problems, but since C<ON> filters are still, generally, very simple, such
-problems aren't expected.
-
-See L<Persist::Driver> for a description of the arguments.
-
-=cut
-
-sub open_explicit_join {
-	my ($self, %args) = @_;
-	
-	my ($tables, $on_exprs, $filter) = @args{qw(-tables -on_exprs -filter)};
-
-	# Setup SELECT and column name prefixes
-	my $sql = "SELECT ";
-	my @aliased;
-	my %alias_name;
-	my @table_schema_names;
-	for (my $i = 0; $i < @$tables; $i += 2) {
-		my $alias = $tables->[$i];
-		if (ref $tables->[$i+1]) {
-			my ($name, $prefix) = @{$tables->[$i+1]};
-			push @table_schema_names, $name;
-			$alias_name{$name} = $alias;
-			my %flds = $self->columns(-table => $name);
-			push @aliased, map { "$alias.$_ as ${prefix}_$_" } keys(%flds);
-		} else {
-			push @table_schema_names, $tables->[$i+1];
-			$alias_name{$tables->[$i+1]} = $alias;
-			push @aliased, "$alias.*";
-		}
-	}
-
-	$sql .= join(',', @aliased) . " FROM ";
-
-	my $i = 2;
-	$sql .= $tables->[1].' '.$tables->[0];
-	for my $on_expr (@$on_exprs) {
-		$sql .= ' INNER JOIN '.$tables->[$i+1].' '.$tables->[$i].' ON ';
-		$sql .= $on_expr;
 	}
 
 	# At this point we are SELECTed and FROMed. Now, we see if there is a 
 	# filter for WHEREing.
-	$sql .= " WHERE ".($self->preprocess_filter(
-							-aliases => { reverse(%alias_name) }, -filter => $filter)) if $filter;
+	if (defined $filter) {
+		$filter = $self->preprocess_filter(
+				-aliases => [ @$tables ],
+				-filter => $filter,
+		);
 
+		$filter = $self->_rewrite_filter($columns, $filter);
+		
+		$sql .= " WHERE ".$filter;
+	}
+
+	if (defined $order) {
+		my @columns;
+		for (my $i = 0; $i < @$order; ++$i) {
+			my $column = $$columns{$$order[$i]};
+			no warnings "numeric";
+			if ($i < $#$order and ($$order[$i + 1] == ASCENDING or $$order[$i + 1] == DESCENDING)) {
+				push @columns, $column.' '.($$order[++$i] == ASCENDING ? 'ASC' : 'DESC');
+			} else {
+				push @columns, $column;
+			}
+		}
+
+		$sql .= " ORDER BY ".join(', ', @columns);
+	}
+
+	$sql .= " OFFSET ".$offset if defined $offset;
+	$sql .= " LIMIT ".$limit if defined $limit;
+	
 	# And we are done.
 	my $sth = $self->handle->prepare($sql);
 	$sth->execute;
-	[ [ @table_schema_names ], $sth ];
+	[ [ @$tables ], $sth, \@table_columns ];
 }
 
 =item $rows = $driver-E<gt>insert(%args)
@@ -393,7 +446,7 @@ sub update {
 
 	my $sql = "UPDATE $name SET ".join(",", map { "$_ = ?" } keys(%$set));
 	if ($filter) {
-		$sql .= " WHERE ".($self->preprocess_filter(-aliases => {$name=>$name}, -filter => $filter));
+		$sql .= " WHERE ".($self->preprocess_filter(-aliases => [ $name ], -filter => $filter));
 	}
 
 #debug#	print STDERR "update SQL: $sql\n";
@@ -436,12 +489,29 @@ simple C<next> call.
 # the case that the handle is already at the first row?
 sub first {
 	my ($self, %args) = @_;
-	my $handle = $args{-handle};
+	my ($handle, $bytable) = @args{qw(-handle -bytable)};
 
-	my $sth = $handle->[1];
-	$sth->finish;
-	$sth->execute;
-	$sth->fetchrow_hashref;
+	if ($bytable && @$handle == 3) {
+		my $sth = $handle->[1];
+		$sth->finish;
+		$sth->execute;
+
+		my $row = $sth->fetchrow_arrayref;
+		my $table_columns = $handle->[2];
+		my @data;
+		for my $i (0 .. @$table_columns) {
+			my %hash;
+			@hash{@{$$table_columns[$i][0]}} = @$row[$$table_columns[$i][1][0] .. $$table_columns[$i][1][1]];
+			push @data, \%hash;
+		}
+
+		return \@data;
+	} else {
+		my $sth = $handle->[1];
+		$sth->finish;
+		$sth->execute;
+		$sth->fetchrow_hashref;
+	}
 }
 
 =item $row = $driver-E<gt>next($handle)
@@ -452,10 +522,26 @@ Fetches the next row.
 
 sub next {
 	my ($self, %args) = @_;
-	my $handle = $args{-handle};
+	my ($handle, $bytable) = @args{qw(-handle -bytable)};
 
-	my $sth = $handle->[1];
-	$sth->fetchrow_hashref;
+	if ($bytable && @$handle == 3) {
+		my $sth = $handle->[1];
+
+		my $row = $sth->fetchrow_arrayref;
+		my $table_columns = $handle->[2];
+		my @data;
+		my %hash;
+		for my $i (0 .. $#$table_columns) {
+			my %hash;
+			@hash{@{$$table_columns[$i][0]}} = @$row[$$table_columns[$i][1][0] .. $$table_columns[$i][1][1]];
+			push @data, \%hash;
+		}
+
+		return \@data;
+	} else {
+		my $sth = $handle->[1];
+		$sth->fetchrow_hashref;
+	}
 }
 
 =item $driver-E<gt>DESTROY

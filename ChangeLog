@@ -1,3 +1,133 @@
+2003-09-22 10:42  hanenkamp
+
+	* Bugs, ToDo: Updating documentation for release.
+
+2003-09-22 10:41  hanenkamp
+
+	* MANIFEST, Persist/Driver/DBI/PostgreSQL/t/compile.t,
+	Persist/Driver/Memory/t/compile.t: Added missing tests to CVS and
+	MANIFEST.
+
+2003-09-22 10:38  hanenkamp
+
+	* README, Persist/Overview.pod: Updated documentation prior to
+	release.
+
+2003-09-22 10:37  hanenkamp
+
+	* Persist/Driver/DBI/DBI.pm: Removed an errant comment.
+
+2003-09-22 09:57  hanenkamp
+
+	* Persist/Test/Config.PL: Changed the names of the POSTGRESQL_
+	environment variables to PG_
+
+2003-09-22 09:55  hanenkamp
+
+	* Makefile.PL: Increased the requirement for Tree::BPTree 1.06,
+	since that includes a major update we require.
+
+2003-09-22 09:53  hanenkamp
+
+	* Persist/Driver/Memory/Memory.pm, Makefile.PL: Removed use of
+	Graph from Memory.pm as it was too inclusive. Wanted simpler
+	functionality similar to DBI driver.
+
+2003-09-22 09:45  hanenkamp
+
+	* Persist/: Filter/Filter.pm, Join/Join.pm, Source/Source.pm,
+	Tabular/Tabular.pm: Updated documentation for the front-end to fix
+	some changes and errors.
+
+2003-09-22 09:17  hanenkamp
+
+	* MANIFEST, Persist/Driver/DBI/DBI.pm,
+	Persist/Driver/Memory/Memory.pm, Persist/Test/tests/join.pl,
+	Persist/Test/tests/offset_limit.pl, Persist/Test/tests/order.pl:
+	Added tests for -offset, -limit, and -order options in drivers and
+	fixed gobs of bugs.
+
+2003-09-20 19:32  hanenkamp
+
+	* MANIFEST: Removed testsetup.PL from the manifest.
+
+2003-09-20 16:02  hanenkamp
+
+	* MANIFEST, Makefile.PL, testsetup.PL,
+	Persist/Driver/DBI/PostgreSQL/test.pl,
+	Persist/Driver/Memory/test.pl, Persist/Source/Source.pm,
+	Persist/Test/Config.PL, Persist/Test/Makefile.PL,
+	Persist/Test/Test.pm, Persist/Test/tests/autonumber.pl,
+	Persist/Test/tests/boolean.pl, Persist/Test/tests/create.pl,
+	Persist/Test/tests/insert_update_delete.pl,
+	Persist/Test/tests/integer.pl, Persist/Test/tests/join.pl,
+	Persist/Test/tests/new_instance.pl,
+	Persist/Test/tests/null_join.pl, Persist/Test/tests/real.pl,
+	Persist/Test/tests/small_join.pl, Persist/Test/tests/timestamp.pl,
+	Persist/Test/tests/varchar.pl: Revamped testing system to provide
+	one set of tests that is applied to all drivers.
+
+2003-09-20 16:01  hanenkamp
+
+	* Persist/Filter/t/.1.t.swp: Shouldn't have been in CVS at all.
+
+2003-09-19 11:05  hanenkamp
+
+	* LICENSE: Added the BSD license to the root directory.
+
+2003-09-19 08:32  hanenkamp
+
+	* Persist/: Persist.pm, Join/Join.pm, Join/t/explicit_join.t,
+	Join/t/join.t, Source/Source.pm, Source/t/source.t, Table/Table.pm,
+	Tabular/Tabular.pm: Added the -order, -offset, and -limit arguments
+	to the appropriate front-end methods.
+
+2003-09-19 08:30  hanenkamp
+
+	* Persist/Makefile.PL: Fixed a bug that caused Persist.pm to be
+	installed in the wrong location.
+
+2003-09-19 08:28  hanenkamp
+
+	* Makefile.PL: Added Graph to the list of prerequisites. This is
+	probably going to be coming back out soon, though.
+
+2003-09-19 06:58  hanenkamp
+
+	* Persist/Driver/: Driver.pm, DBI/DBI.pm: Added support for -order,
+	-offset, and -limit to PostgreSQL driver.
+
+2003-09-18 23:04  hanenkamp
+
+	* Persist/Driver/: Driver.pm, DBI/DBI.pm,
+	DBI/PostgreSQL/PostgreSQL.pm, Memory/Memory.pm: Removed
+	open_explicit_join() and added -on flag to open_join(). Also added
+	handling for -order, -offset, and -limit to Memory driver.
+
+2003-09-18 08:38  hanenkamp
+
+	* Persist/Filter/Filter.pm: Updated filter to support new #.column
+	syntax to replace all forms of aliasing.
+
+2003-09-15 15:24  hanenkamp
+
+	* Makefile.PL: Added Tree::BPTree to the list of prerequisites.
+
+2003-09-15 15:23  hanenkamp
+
+	* Persist/Driver/Memory/Memory.pm: Altered the underlying Memory
+	driver implementation to use indexes based upon Tree::BPTree. Made
+	t/join.t work better and fixed a bug discovered in t/small_join.t.
+
+2003-09-15 15:21  hanenkamp
+
+	* Persist/Makefile.PL: Fixed a bug that prevented Persist.pm from
+	being installed.
+
+2003-09-06 15:10  hanenkamp
+
+	* ChangeLog: Updated ChangeLog.
+
 2003-09-06 15:09  hanenkamp
 
 	* Bugs, ChangeLog, MANIFEST, README, ToDo: Updated documentation

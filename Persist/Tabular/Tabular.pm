@@ -9,7 +9,7 @@ use Carp;
 use Getargs::Mixed;
 
 our $AUTOLOAD;
-our ( $VERSION ) = '$Revision: 1.8 $' =~ /\$Revision:\s+([^\s]+)/;
+our ( $VERSION ) = '$Revision: 1.10 $' =~ /\$Revision:\s+([^\s]+)/;
 
 =head1 NAME
 
@@ -74,14 +74,16 @@ driver.
 =cut
 
 sub first {
-	my $self = shift;
+	my ($self, %args) = parameters('self', [qw(;bytable)], @_);
 
 	$self->_sync;
-	$self->{-data} = $self->{-driver}->first(-handle => $self->{-handle});
+	$self->{-data} = $self->{-driver}->first(
+		-handle  => $self->{-handle},
+		-bytable => $args{bytable});
 	$self->{-data} ? $self : undef;
 }
 
-=item $tabular-E<gt>next
+=item $tabular-E<gt>next( [ $bytable ] )
 
 Moves the iterator position to the next row of the data set. Either this
 method or C<first> must be called before data is accessed. This is the
@@ -90,17 +92,24 @@ resetting cursors, etc. in the driver's store. If there are changes pending in
 the current row, then those changes are saved before moving the iterator
 position.
 
+If the C<$bytable> option is set to true and this is a join, then this will
+not return a hash of all column-names pointing to values. Instead, this will
+return an array of hashes. Each element of the array will be the data
+corresponding to the respective table defined in during the call to C<join>.
+
 =cut
 
 sub next {
-	my $self = shift;
+	my ($self, %args) = parameters('self', [qw(;bytable)], @_);
 
 	$self->_sync;
-	$self->{-data} = $self->{-driver}->next(-handle => $self->{-handle});
+	$self->{-data} = $self->{-driver}->next(
+		-handle  => $self->{-handle}, 
+		-bytable => $args{bytable});
 	$self->{-data} ? $self : undef;
 }
 
-=item $tabular->filter($filter)
+=item $tabular-E<gt>filter($filter)
 
 Changes the filter or filters used to filter the data set and resets the
 driver handle. Either C<first> or C<next> must be called to access the data
@@ -112,9 +121,76 @@ For information on the format of filters see L<Persist::Filter>.
 
 sub filter {
 	my ($self, %args) = parameters('self', [qw(filter)], @_);
-	my $filter = $args{filter};
 
-	$self->{-filter} = $filter;
+	$self->{-filter} = $args{filter};
+	$self->_sync(1);
+	$self;
+}
+
+=item $tabular-E<gt>order(\@order)
+
+Sets or changes the order columns are to be sorted and resets the driver handle.
+Either C<first> or C<next> must be called to access the data after this call is
+made.
+
+=cut
+
+sub order {
+	my ($self, %args) = parameters('self', [qw(order)], @_);
+
+	$self->{-order} = $args{order};
+	$self->_sync(1);
+	$self;
+}
+
+=item $tabular-E<gt>offset($offset)
+
+Sets or changes the offset that the table uses and resets the driver handle.
+Either C<first> or C<next> must be called to access the data after this call is
+made.
+
+=cut
+
+sub offset {
+	my ($self, %args) = parameters('self', [qw(offset)], @_);
+
+	$self->{-offset} = $args{offset};
+	$self->_sync(1);
+	$self;
+}
+
+=item $tabular-E<gt>limit($limit)
+
+Sets or changes the limit that the table uses and resets the driver handle.
+Either C<first> or C<next> must be called to access the data after this call is
+made.
+
+=cut
+
+sub limit {
+	my ($self, %args) = parameters('self', [qw(limit)], @_);
+
+	$self->{-limit} = $args{limit};
+	$self->_sync(1);
+	$self;
+}
+
+=item $tabular-E<gt>options([ $filter, \@order, $offset, $limit ])
+
+This allows a number of options on the table to be set at once and then resets
+the driver handle. Either C<first> or C<next> must be called to access the data
+after this call is made.
+
+=cut
+
+sub options {
+	my ($self, %args) = parameters('self', [qw(;filter order offset limit)], @_);
+
+	# Use exists to make sure we undef when they want us to!
+	$self->{-filter} = $args{filter} if exists $args{filter};
+	$self->{-order}  = $args{order}  if exists $args{order};
+	$self->{-offset} = $args{offset} if exists $args{offset};
+	$self->{-limit}  = $args{limit}  if exists $args{limit};
 	$self->_sync(1);
 	$self;
 }

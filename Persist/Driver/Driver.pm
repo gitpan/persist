@@ -4,7 +4,10 @@ use 5.008;
 use strict;
 use warnings;
 
-our ( $VERSION ) = '$Revision: 1.4 $' =~ /\$Revision:\s+([^\s]+)/;
+our ( $VERSION ) = '$Revision: 1.6 $' =~ /\$Revision:\s+([^\s]+)/;
+
+# TODO Design a driver testing kit that establishes a battery of tests that all
+# drivers must pass--rather than having an individual test kit for each driver.
 
 =head1 NAME
 
@@ -27,7 +30,6 @@ Persist::Driver - Base class for Persist drivers
   sub tables { ... }
   sub open_table { ... }
   sub open_join { ... }
-  sub open_explicit_join { ... }
   sub insert { ... }
   sub update { ... }
   sub delete { ... }
@@ -244,6 +246,25 @@ The name of the table.
 The C<$filter> argument may be used to narrow the results. See
 L<Persist::Filter/FILTERS> for details on the format of C<$filter>.
 
+=item @order (optional)
+
+The C<$order> argument may be used to determine the order in which records
+should be returned. The names of the order columns should match those selected
+(using SQL terms). Each column may be followed by the constant C<ASC> (or
+C<ASCENDING>) to assert ascending order (which is the default) or by C<DESC> (or
+C<DESCENDING>) to assert descending order. The constant applies to the
+immediately preceding column name only.
+
+=item $offset (optional)
+
+This is the 0-based index of the first record to return. If this index is beyond
+the last record in the database, the handle should return no records.
+
+=item $limit (optional)
+
+This is the maximum number of calls to C<next> that should return rows. The
+C<($limit + 1)>th call should return C<undef>.
+
 =back
 
 =cut
@@ -255,29 +276,65 @@ sub open_table {
 =item $handle = $driver-E<gt>open_join(%args)
 
 Creates a handle to refer to for iterating over a selection of data in a set of
-tables.
+tables. This join will be performed implicitly if no "-on" option is present.
+Otherwise, it will rely on the user to explicitly specify how the tables are to
+be joined.
+
+Implicit joining occurs based upon the links between tables. If we think of
+links as a directed graph, the implicit join will use as many of the links
+between the tables as possible, without causing a loop in the graph. Which links
+are dropped when a set of tables contains a circular set of links is up to the
+driver itself.  This specification recommends to driver writers that tables that
+occur later in the C<@tables> list should be preferred when dropping links. This
+specification recommends to Persist users that they use an explicit join if
+there are circular links in a set of joined tables to make sure you get the join
+you are looking for.
 
 =over
 
 =item @tables
 
-The array C<@tables> is a list of table names to join. If the list of tables
-contains a circular set of C<LINK> constraints, then latter tables will not be
-completely joined.  Otherwise, we might create a set of constraints that cannot
-be or can barely be satisfied. It is possible to join two unrelated tables, but
-doing so will create a cross-product of the records, which is generally
-undesirable for performance reasons.
+The array C<@tables> is a list of table names to join.
 
-=item @filters (optional)
+=item $filter (optional)
 
-In addition to the C<LINK> constraints, the user may specify one or more
-filters. The C<@filters> array contains one filter per table in C<@tables> and
-the filters are matched to a table in C<@tables> respectively. It is permissible
-for the filters array to be shorter than the array of tables if a filter is not
-defined for all tables.  Undefined filters can be specified with the C<undef>
-value.
+This specifies the filter to use to choose which rows to return. Only rows where
+the filter and join conditions are true will be returned.
 
-See L<Persist::Filter/FILTERS> for details on the format of the filters.
+See L<Persist::Filter|Persist::Filter/FILTERS> for details on the format of the
+filters.
+
+=item @on (optional)
+
+This specifies the filter to use to join the tables together. If specified, the
+C<@on> array should be one element smaller than the C<@tables> array. The first
+element of the C<@on> array will be used to join the first and second tables in
+the C<@tables> array.  The second element of the C<@on> array will be used to
+join the third table to the first and second tables in the C<@tables> array.
+This proceeds onward until the last C<@on> element will be used to join the last
+C<@tables> element to all the previous tables.
+
+See L<Persist::Filter|Persist::Filter/FILTERS> for details on the format of the
+filters.
+
+=item @order (optional)
+
+The C<$order> argument may be used to determine the order in which records
+should be returned. The names of the order columns should match those selected
+(using SQL terms). Each column may be followed by the constant C<ASC> (or
+C<ASCENDING>) to assert ascending order (which is the default) or by C<DESC> (or
+C<DESCENDING>) to assert descending order. The constant applies to the
+immediately preceding column name only.
+
+=item $offset (optional)
+
+This is the 0-based index of the first record to return. If this index is beyond
+the last record in the database, the handle should return no records.
+
+=item $limit (optional)
+
+This is the maximum number of calls to C<next> that should return rows. The
+C<($limit + 1)>th call should return C<undef>.
 
 =back
 
@@ -288,50 +345,6 @@ that are joined according to their C<LINK> indexes.
 
 sub open_join {
 	die "Must be implemented by driver.";
-}
-
-=item $handle = $driver-E<gt>open_explicit_join(%args)
-
-Creates a handle to refer to for iterating over a selection of data in a set of
-tables whose joining is explicitly defined.
-
-This method accepts this arguments in C<%args>:
-
-=over
-
-=item @tables
-
-The array C<@tables> is a list of table name aliases followed by table names of
-those tables to join.
-
-=item @on_exprs
-
-The array C<@on_exprs> contains the expressions used to join each set of tables.
-Tables are joined in the order given with each C<@on_exprs> expression in the
-I<n>th place joining the table in the (I<n>+1)th with all tables prior to and
-including the I<n>th. The table name aliases should be used in the expressions
-during join. Expressions that are set to C<undef> should either result in an
-implicit join or a full cross-product of the relations--depending upon the
-driver implementation--so it's best to just specify it!
-
-=item $filter (optional)
-
-In addition to the explicit constraints, the user may specify a filter.  The
-C<$filter> string contains a filter expression and should use the table name
-aliasees in C<@tables>.
-
-See L<Persist::Filter/FILTERS> for details on the format of the filters and AS
-expressions.
-
-=back
-
-Returns a handle which may be used to fetch information out of a group of tables
-that are joined according to the explicit information given by the user.
-
-=cut
-
-sub open_explicit_join {
-	die "Must be implemented by driver."
 }
 
 =item $rows = $driver-E<gt>insert(%args)

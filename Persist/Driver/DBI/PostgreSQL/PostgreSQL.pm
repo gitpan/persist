@@ -15,7 +15,7 @@ use Persist::Filter;
 
 our @ISA = qw(Persist::Driver::DBI);
 
-our ( $VERSION ) = '$Revision: 1.18 $' =~ /\$Revision:\s+([^\s]+)/;
+our ( $VERSION ) = '$Revision: 1.19 $' =~ /\$Revision:\s+([^\s]+)/;
 
 use constant TYPES => [ 
 	qw( varchar int4 serial bool float8 timestamp )
@@ -187,42 +187,28 @@ sub preprocess_filter {
 	};
 	
 	my $ast = parse_filter($filter);
-	if (scalar(keys %$tables) == 1) {
-		my ($alias) = keys(%$tables);
-		my ($name) = values(%$tables);
-		my $cols = { $self->columns(-table => $name) };
-		
-		$preprocess_boolean = sub {
-			my ($id, $lit) = @_;
-			for my $col (keys %$cols) {
-				if ($$cols{$col}[0] == BOOLEAN && 
-						$$id =~ /(?:$alias.)?$col$/i && defined $$lit) {
-					$$lit = $$lit == 0 ? "'false'" : "'true'";
-				}
-			}
-		};
 
-		$ast->remap_on('Persist::Filter::Comparison', $process_ast);
-	} else {
-		my $cols = {};
-		while (my ($alias, $name) = each %$tables) { 
-			$$cols{$alias} = +{ $self->columns(-table => $name) };
+	my $cols;
+	my %seen;
+	for my $i (0 .. $#$tables) {
+		my $name = $$tables[$i];
+		my %columns = $self->columns(-table => $name);
+		my $table_num = ++$seen{$name};
+		for my $column (keys %columns) {
+			for my $prefix ('', ($i + 1).".", "$name.", "$name$table_num.") {
+				$$cols{"$prefix$column"} = $columns{$column};
+			}
 		}
-
-		$preprocess_boolean = sub {
-			my ($id, $lit) = @_;
-			for my $alias (keys %$cols) {
-				for my $col (keys %{$$cols{$alias}}) {
-					if ($$cols{$alias}{$col}[0] == BOOLEAN &&
-							$$id =~ /(?:$alias.)?$col$/i && defined $$lit) {
-						$$lit = $$lit == 0 ? "'false'" : "'true'";
-					}
-				}
-			}
-		};
-
-		$ast->remap_on('Persist::Filter::Comparison', $process_ast);
 	}
+
+	$preprocess_boolean = sub {
+		my ($id, $lit) = @_;
+		if ($$cols{$$id}[0] == BOOLEAN && defined $$lit) {
+			$$lit = $$lit == 0 ? "'false'" : "'true'";
+		}
+	};
+
+	$ast->remap_on('Persist::Filter::Comparison', $process_ast);
 
 	$ast->unparse;
 }
@@ -286,17 +272,29 @@ converts PostgreSQL style dates to L<Persist> style timestamps.
 
 sub first {
 	my ($self, %args) = @_;
-	my $handle = $args{-handle};
+	my ($handle, $bytable) = @args{qw(-handle -bytable)};
 	my $tables = $handle->[0];
 
 	my $results = $self->SUPER::first(-handle => $handle);
 
 	if (defined $results) {
-		for my $name (@$tables) {
-			my %columns = $self->columns(-table => $name);
-			while (my ($k, $v) = each %columns) {
-				if ($v->[0] == TIMESTAMP and defined($results->{$k})) {
-					$results->{$k} = DateTime::Format::Pg->parse_timestamp($results->{$k});
+		if ($bytable and @$tables > 1) {
+			for my $i (0 .. $#$tables) {
+				my $name = $$tables[$i];
+				my %columns = $self->columns(-table => $name);
+				while (my ($k, $v) = each %columns) {
+					if ($v->[0] == TIMESTAMP and defined($results->[$i]{$k})) {
+						$results->[$i]{$k} = DateTime::Format::Pg->parse_timestamp($results->[$i]{$k});
+					}
+				}
+			}
+		} else {
+			for my $name (@$tables) {
+				my %columns = $self->columns(-table => $name);
+				while (my ($k, $v) = each %columns) {
+					if ($v->[0] == TIMESTAMP and defined($results->{$k})) {
+						$results->{$k} = DateTime::Format::Pg->parse_timestamp($results->{$k});
+					}
 				}
 			}
 		}
@@ -316,17 +314,29 @@ converts PostgreSQL dates to L<DateTime> objects.
 
 sub next {
 	my ($self, %args) = @_;
-	my $handle = $args{-handle};
+	my ($handle, $bytable) = @args{qw(-handle -bytable)};
 	my $tables = $handle->[0];
 
-	my $results = $self->SUPER::next(-handle => $handle);
+	my $results = $self->SUPER::next(-handle => $handle, -bytable => $bytable);
 
 	if (defined $results) {
-		for my $name (@$tables) {
-			my %columns = $self->columns(-table => $name);
-			while (my ($k, $v) = each %columns) {
-				if ($v->[0] == TIMESTAMP and defined($results->{$k})) {
-					$results->{$k} = DateTime::Format::Pg->parse_timestamp($results->{$k});
+		if ($bytable and @$tables > 1) {
+			for my $i (0 .. $#$tables) {
+				my $name = $$tables[$i];
+				my %columns = $self->columns(-table => $name);
+				while (my ($k, $v) = each %columns) {
+					if ($v->[0] == TIMESTAMP and defined($results->[$i]{$k})) {
+						$results->[$i]{$k} = DateTime::Format::Pg->parse_timestamp($results->[$i]{$k});
+					}
+				}
+			}
+		} else {
+			for my $name (@$tables) {
+				my %columns = $self->columns(-table => $name);
+				while (my ($k, $v) = each %columns) {
+					if ($v->[0] == TIMESTAMP and defined($results->{$k})) {
+						$results->{$k} = DateTime::Format::Pg->parse_timestamp($results->{$k});
+					}
 				}
 			}
 		}

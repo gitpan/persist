@@ -11,7 +11,7 @@ use Getargs::Mixed;
 use Persist::Join;
 use Persist::Table;
 
-our ( $VERSION ) = '$Revision: 1.8 $' =~ /\$Revision:\s+([^\s]+)/;
+our ( $VERSION ) = '$Revision: 1.11 $' =~ /\$Revision:\s+([^\s]+)/;
 
 our $AUTOLOAD;
 
@@ -43,9 +43,9 @@ Persist::Source - Main class used for accessing Persist data
 
   $table = $source->folks;
   $join = $source->join([ 'folks', 'favorites' ]);
-  $join2 = $source->explicit_join(
-              [ O => 'folks', A => 'favorites' ]
-			  "O.fid = A.fid");
+  $join2 = $source->join(
+              [ 'folks', 'favorites' ]
+			  "folks.fid = favorites.fid");
 
 =head1 DESCRIPTION
 
@@ -74,7 +74,7 @@ sub new {
 
 	croak "No driver specified." unless $driver;
 	croak "Illegal driver package '$driver'."
-			unless $driver =~ /[a-z_][a-z0-9_]+(::[a-z_][a-z0-9_]+)*/i;
+			unless $driver =~ /^[a-z_][a-z0-9_]+(::[a-z_][a-z0-9_]+)*$/i;
 	eval "package Persist::_firesafe; use $driver";
 	$self->{-driver} = $driver->new(%args);
 
@@ -175,98 +175,126 @@ sub tables {
 	$self->{-driver}->tables;
 }
 
-=item $join = $source-E<gt>join($tables [, $filters ] )
+=item $join = $source-E<gt>join(\@tables [, $on, $filter, \@order, $offset, $limit ] )
 
 Returns a reference to a L<Persist::Join> object which may be used to access
 columns of the joined tables. C<$tables> is a list of tables to join and
-C<$filters> is a list of filters to apply to the tables, respectively.
+C<$filter> is a list of filters to apply to the tables, respectively.
 
-This method tries to automatically join tables based upon their C<LINK>
-indexes.  This is process is done as intelligently as I could divine, but
-cannot join a table to itself--at least not currently. It will also use the
-first indexes it finds between two tables and will not use more than one index
-during a join.  Finally, it will not look for links between tables that will
-result in a circular joining.
+If the C<@on> parameter is specified, then the tables will be joined
+accordinging to user preference. If C<@on> is missing, the driver will attempt
+to automatically join the given tables. Automatic joining only works when no
+tables are repeated in the C<@tables> list (repeating tables will require the
+user to use the C<@on> option.
 
-For more complicated joining, try C<explicit_join>.
-
-=cut
-
-sub join {
-	my ($self, %args) = parameters('self', [qw(join; filter)], @_);
-	my ($join, $filter) = @args{qw(join filter)};
-	new Persist::Join($self->{-driver}, $join, $filter);
-}
-
-=item $join = $source-E<gt>explicit_join($tables, $on_exprs [, $filter ])
-
-This performs a more explicit form of the join operation. This allows the user
-to pick the fields joined upon in the case that there is no key constraint to
-guide the I<Persist> system or when such implicit joins are otherwise
-inappropriate. The arguments to this method are a little more complicated than
-most, but should make sense:
+Automatic joins are performed based upon each table's C<LINK> indexes.  This is
+process is done as intelligently as I know how. It will use the first index it
+finds between two tables to join them and will not use more than one index
+during a join. Once all tables have been joined according to the indexes found,
+the database operation is performed. Automatic joining works well when there
+is only one index linking two tables. However, if multiple indexes join two
+tables, the driver may not pick the index you want, so use C<@on> instead.
 
 =over
 
-=item $tables
+=item @tables
 
-This argument is an array reference with the appearance of a hash. There should
-be an even number of elements in the array. The even indexed attributes are
-table name aliases, which are followed by the odd attributes which are table
-names. This allows a table to be explicitly joined to itself.  Here is an
-example,
-
-  [ O => 'Folks', A => 'Favorites' ]
-
-For those that might not know, the arrow (=>) is equivalent to comma (,) except
-that it causes the preceding value to be stringified (i.e., interpreted as a
-string). (Wacky Perl syntactic sugar. ;)
-
-=item $on_exprs
-
-This is an array reference to a set of strings. There should be one expression
-for each join. Joins are performed in the order they are specified in
-C<$tables>. The first two tables given will be joined first by the first
-expression in the first element of C<$on_exprs>. The third table will be joined
-to the first two by the second element. The fourth table by the third element,
-etc. The expressions should use the table name aliases given in the C<$table>
-argument.
-
-If there's only one expression, i.e. only two tables in the join, you may omit
-the array reference and just include the expression as a string. If a full
-cross-product (unqualified join) is desired, then the C<undef> value should be
-used in place of the expression. B<WARNING: A full cross-product join can be
-extremely inefficient in some contexts.>
+This is the list of tables to draw records from.
 
 =item $filter (optional)
 
-This string has the same purpose as the C<$filters> argument to the other
-C<join> method. However, this method is always a single string. This variable
-should also use the table name aliases given in the C<$table> argument.
+This is a single filter to apply to the tables. Since a join might include two
+tables with columns of the same name, you need to make sure you use unambiguous
+column names. This is done by prepending a table identifier to the column. The
+table identifier can be the name of the table (when the same table is not used
+twice), the numeric index of the table in C<@tables> plus one, or the name of
+the table with the occurance number on the end. The table identifier should be
+separated from the column identifier by a period.
+
+For example, if C<@tables> were set to C<[ 'A', 'B', 'A' ]>, these would all
+be identical filters:
+
+  "1.x = 2.x and 1.x = 3.y"
+  "1.x = B1.x and 1.x = 3.y"
+  "A1.x = B.x and A1.x = A2.y"
+  "A1.x = 2.x and A1.x = A2.y"
+
+=item @order (optional)
+
+A list of columns that will be used for ordering. The list may also contain the
+C<ASCENDING> or C<DESCENDING> constants following a column name to specify the
+direction of the ordering. Without these constants the default is C<ASCENDING>.
+(Note that C<ASC> and C<DESC>, respectively, are aliases to these constants.) In
+this way, it may be convenient to use hash notation to make these a little more
+explicit.
+
+=item $offset (optional)
+
+This is the number of records to skip before returning a result. If this causes
+every matching row to be skipped, then no rows will be returned. No records are
+skipped if this is unspecified.
+
+=item $limit (optional)
+
+This is the number of records to be returned. Once C<next> has been called
+C<$limit> times on the table, C<next> will return no more records. All records
+returned until the end of the table is reached if this is either unspecified or
+set to 0--i.e., you cannot tell the join to return 0 records.
 
 =back
 
 =cut
 
-sub explicit_join {
-	my ($self, %args) = parameters('self', [qw(tables on_exprs; filter)], @_);
-	my ($tables, $on_exprs, $filter) = @args{qw(tables on_exprs filter)};
-	Persist::Join->new_explicit($self->{-driver}, 
-			$tables, $on_exprs, $filter);
+sub join {
+	my ($self, %args) = parameters('self', [qw(tables; on filter order offset limit)], @_);
+	new Persist::Join($self->{-driver}, @args{qw(tables on filter order offset limit)});
 }
 
-=item $table = $source-E<gt>table($table [, $filter ])
+=item $table = $source-E<gt>table($table [, $filter, \@order, $offset, $limit ])
 
 Returns a reference to a L<Persist::Table> object which may be used to access
 columns of the table.
+
+=over
+
+=item $table
+
+The name of the table to retrieve information about.
+
+=item $filter (optional)
+
+The filter to use to pick out which records the table object will contain.
+
+=item @order (optional)
+
+A list of columns that will be used for ordering. The list may also contain the
+C<ASCENDING> or C<DESCENDING> constants following a column name to specify the
+direction of the ordering. Without these constants the default is C<ASCENDING>.
+(Note that C<ASC> and C<DESC>, respectively, are aliases to these constants.) In
+this way, it may be convenient to use hash notation to make these a little more
+explicit. For example:
+
+  -order => [ rank => DESCENDING, lastname => ASCENDING, firstname => ASCENDING ]
+
+=item $offset (optional)
+
+This is the (0-based) index of the first record to include in the results. If
+this index points to an index after the last record that would be returned, the
+table will be empty.
+
+=item $limit (optional)
+
+This is the number of records to be returned. Once C<next> has been called
+C<$limit> times on the table, C<next> will return no more records.
+
+=back
 
 =cut
 
 # FIXME An exception should occur in table when the given table doesn't exist.
 sub table {
-	my ($self, %args) = parameters('self', [qw(table; filter)], @_);
-	my ($table, $filter) = @args{qw(table filter)};
-	new Persist::Table($self->{-driver}, $table, $filter);
+	my ($self, %args) = parameters('self', [qw(table; filter order offset limit)], @_);
+	new Persist::Table($self->{-driver}, @args{qw(table filter order offset limit)});
 }
 
 =item $table = $source-E<gt>E<lt>I<table>E<gt>( [ $filter ] ) 
@@ -276,10 +304,9 @@ A shortcut to C<$source-E<gt>table('E<lt>tableE<gt>')>.
 =cut
 
 sub AUTOLOAD {
-	my ($self, %args) = parameters('self', [qw(;filter)], @_);
-	my $filter = $args{filter};
+	my ($self, %args) = parameters('self', [qw(;filter order offset limit)], @_);
 	my ($table) = $AUTOLOAD =~ /::([^:]+)$/;
-	$self->table($table, $filter);
+	$self->table($table, @args{qw(filter order offset limit)});
 }
 
 sub DESTROY {

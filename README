@@ -10,10 +10,7 @@ correct functionality.
 
 The emphasis has been upon developing an easy-to-program API that is uniform
 across back-ends. The back-ends make certain that certain features are
-available, but do not guarantee that all aspects are fully enforced--for
-example, creating a UNIQUE index under the PostgreSQL driver is fully enforced
-by the PostgreSQL database, but the Memory driver does not explicitly enforce
-this constraint.
+available, but do not guarantee that all aspects are fully enforced.
 
 The primary goal of this library is ease of use. High performance is not of
 primary interest. If performance is what you are looking for, you should
@@ -24,52 +21,39 @@ required.
 
 The new Persist::Overview document is a good place to start.
 
-RELEASE NOTES for 0.5.0
+RELEASE NOTES for 0.5.2
 
-This version of the library has resulted in a full minor version because the API
-has changed slightly. For most code, this will not have any effect whatsoever. I
-have tried to make the changes very minimal. However, the code required to
-connect and create new database instances has changed. Code working with dates
-will also have to be changed--though, this is probably a positive since the old
-date handling was a load of garbage.
+Unfortunately, I have had to make an API change within a minor version because
+I haven't made enough other changes to warrant a full minor version. This change
+doesn't modify much existing functionality, it has simply removed all of the
+methods for handling explicit joins. Explicit joins are now handled by the 
+normal join methods using a new "-on" option. I regret having to make a change
+like this, but it should have been done for the 0.5.0/0.5.1 release.
 
-The API changes are three-fold. The back-end has switched to use a named-parameter
-passing syntax. All parameters passed to drivers are now passed as key/value
-pairs. This has altered the front-end in that the Persist::Source::new(),
-Persist::Source::new_source(), and Persist::Source::delete_source() pass
-arguments directly to the back-end. Because of this, creating connections has
-changed slightly.
+In addition, new options have been added when accessing tables and joins for
+ordering columns and setting an offset and limit on the rows returned. This
+change is supported by both drivers.
 
-The second API change is seamless. All front-end methods now accept a mixed
-positional/named argument syntax. That is, the arguments to methods can be
-passed using a more traditional positional approach or by using named arguments
-as are used with the back-end methods. Further, the syntax can be mixed in
-certain ways. See Persist::Overview or Getargs::Mixed for details.
+The testing and build system has been revamped, again. This may change the
+installation procedure a bit for some. (See below for details.) The new testing
+system uses a single batch of tests that are run for each configured driver.
+This way, regression tests can be designed once and then applied to all drivers.
+This should result in better standards checking and has already resulted in a
+few bugs being found.
 
-The third API change is quite major and involves the handling of dates.
-Previously, dates were handled only as strings in a very stupid format. I do not
-know what possessed me to choose such a format, but it has been abolished. Dates
-may now be used as strings formatted in ISO 8601 format. Dates returned from the
-database will be returned as DateTime objects, which is an excellent utility put
-out by the Perl DateTime project--see http://datetime.perl.org/. Anyway, this
-change ought to be welcome.
+This has the pleasant side-effect of providing a new API that Persist users may
+use to test their own code against every configured Persist driver. Thus, a user
+may write code for Persist and ask the testing system of Persist to run their
+tests over all configured test sources. Any differences that may exist between
+the various drivers can then be tested to make sure your code will work under
+a diversity of environments.
 
-Finally, it should be noted that another minor change has been added which might
-break code using an older version. The problem occurs when using the
-Persist::Table::value() or Persist::Tabular::value() methods as if they were
-common fields. The last version used some "magic" to try and guess when it was
-being misused, but try to do the right thing anyway. I decided that this was a
-too bad of an idea to keep. Further, with the new mixed argument passing syntax,
-it becomes much more difficult to make it work. Therefore, attempting to misuse
-the value() method this way will either result in bad results or an error--as it
-should.
+These changes and others have been made to begin paving the way for the
+inclusion of a MySQL driver, which I hope to make part of the 0.5.3 release.
 
-In addition to API changes, a few minor build system changes have been made to
-make it easier to configure and install. See the section on INSTALLATION below.
-
-The API of this library is otherwise well stabilized. In fact, these changes
-were made to make it even more so. Now, new features can be added to either the
-back-end or front-end without even the temptation to break older code.
+The API of this library is mostly stabilized. Dropping explicit_join was an
+unfortunate, but necessary evil, but, at this point, I see no reason why any
+other part of the API should be dropped in the future.
 
 I see the 0.5.x series to be a chance to expand the horizons of what Persist is
 able to do. With the new parameter passing syntax, it should be easier to add
@@ -77,19 +61,26 @@ new features to the system without changing anything that has passed. This
 series will probably see the addition of a lot of new usability features. I also
 hope to include one and maybe two new back-end drivers.
 
-STORAGE SYSTEM DRIVERS of 0.5.0
+STORAGE SYSTEM DRIVERS of 0.5.2
 
 There are only two back-ends and one abstract support driver. The memory
-back-end is fully functional and supports transient persistence. Each memory
+back-end is fully functional and supports "transient persistence." Each memory
 database is fresh and all data is lost upon destruction. This is primarily
-intended for testing purposes. It is likely to be very slow as all data is
-stored in Perl hashes.
+intended for testing purposes. It is very slow since all data is stored in
+B+ Trees via another package of mine, Tree::BPTree. That package is documented
+to be many times slower than hashes for most operations, but are reliable
+for testing purposes--see the documentation for Tree::BPTree for benchmarks.
 
 The DBI abstract back-end is used to create other DBI back-ends. It features
 pre-built queries for most of the common operations and support for table and
-column lookups through the new DBI calls for table_info and column_info.
-Drivers extending the DBI driver still need to implement DDL and DBA calls as
-those are nearly always dependent upon the database system being used.
+column lookups through the DBI calls for table_info and column_info.  Drivers
+extending the DBI driver still need to implement DDL and DBA calls as those are
+nearly always dependent upon the database system being used.
+
+At this time the DBI driver is in a kind of weird state that needs to be fixed.
+It may be hard to develop new DBI-based drivers with it because it is so tightly
+bound with PostgreSQL. This should be changing soon with the introduction of a
+second DBI driver.
 
 The other concrete driver is the PostgreSQL driver. This is the only driver
 that has really been built with the intent of actual use.  It supports all
@@ -106,16 +97,23 @@ Installation follows the typical pattern for Perl modules:
    make test
    make install
 
-Running "perl Makefile.PL" will ask some questions about how to test the
-PostgreSQL driver. These will allow you to test the driver to make sure it is
-working properly prior to installation. If you plan on using the PostgreSQL
-driver, I highly recommend configuring this.
+Running "make" will ask some questions about how to test the PostgreSQL driver.
+These will allow you to test the driver to make sure it is working properly
+prior to installation. If you plan on using the PostgreSQL driver, I highly
+recommend configuring this.
+
+If you want to avoid these questions, you may set the PG_DATABASE, PG_HOST,
+PG_PORT, PG_USERNAME, and PG_PASSWORD environment variables to appropriate
+values prior to running make for the first time. If you need to reconfigure
+these settings after running make, you must first run:
+
+  make clean
+
+to clear the current settings.
 
 The tests will create and drop a couple tables several times (named "folks" and
-"favorites"). You should probably use a blank database owned by a user with the
-ability to create databases and users--to test the DBA features of the
-PostgreSQL driver--the DBA tests will attempt to create a database and user
-named "test" and then drop both.
+"favorites"). You should probably use a blank database for this. (I use a scratch
+database that I use for a variety of tests on my own machine.)
 
 For any other help, you can see http://contentment.sourceforge.net/ or contact
 Sterling Hanenkamp at hanenkamp@users.sourceforge.net.
@@ -126,7 +124,9 @@ This module requires these other modules and libraries:
 
   * Perl 5.8.0
   * DateTime
-  * DBD::Pg
+  * DateTime::Format::ISO8601
+  * DateTime::Format::Pg (if you test the PostgreSQL driver)
+  * DBD::Pg (if you test the PostgreSQL driver)
   * DBI
   * Getargs::Mixed
   * PostgreSQL 7.3 or greater

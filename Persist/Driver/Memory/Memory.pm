@@ -7,12 +7,18 @@ use warnings;
 use DateTime;
 use DateTime::Format::ISO8601;
 
+use Tree::BPTree;
+
 use Persist qw(:constants :driver_help);
 use Persist::Filter;
 use Persist::Driver;
 
-our ( $VERSION ) = '$Revision: 1.13 $' =~ /\$Revision:\s+(\S+)/;
+our ( $VERSION ) = '$Revision: 1.17 $' =~ /\$Revision:\s+(\S+)/;
 our @ISA = qw( Persist::Driver );
+
+# TODO When creating temporary indexes used during open_* operations when $order
+# is present, we should make the references to those weak, so that they
+# disappear when no more cursors refer to them.
 
 =head1 NAME
 
@@ -83,15 +89,132 @@ sub delete_source { 1 }
 
 Records the schema and returns success. None of the given constraints will be
 enforced, but are remembered for later reference by the C<tables>, C<columns>,
-and C<indexes> methods.
+and C<indexes> methods. Also, empty hash indexes are created for each index
+given in C<indexes>.
 
 =cut
+
+sub _numeric_column {
+	my ($self, $name, $column) = @_;
+	my %columns = $self->columns(-table => $name);
+	my $type = $columns{$column}[0];
+	return($type == AUTONUMBER
+		or $type == INTEGER
+		or $type == BOOLEAN
+		or $type == REAL);
+}
+
+use constant STRING     => 0;
+use constant NUMERIC    => 1;
+
+sub _type_flag {
+	my ($self, $name, $column) = @_;
+	my %columns = $self->columns(-table => $name);
+	if ($self->_numeric_column($name, $column)) {
+		return NUMERIC;
+	} elsif ($columns{$column}[0] == TIMESTAMP) {
+		return TIMESTAMP;
+	} else {
+		return STRING;
+	}
+}
+
+sub _find_or_build_index {
+	my ($self, $table, $unique, @columns) = @_;
+
+	# We're going to be doing numeric comparisons on strings and that's what we
+	# really want.
+	no warnings 'numeric';
+	
+	my @names;
+	my @exprs;
+	my @just_columns;
+	my $key_index = 0;
+	for (my $i = 0; $i < @columns; ++$i) {
+		my $column = $columns[$i];
+		push @just_columns, $column;
+
+		my $direction =
+			$i < $#columns && ($columns[$i + 1] == DESCENDING 
+						   ||  $columns[$i + 1] == ASCENDING) ? $columns[++$i]
+															  : ASCENDING;
+	
+		my $expr = $self->_numeric_column($table, $column) 
+				? "\$_[0][$key_index] <=> \$_[1][$key_index]"
+				: "\$_[0][$key_index] cmp \$_[1][$key_index]";
+		++$key_index;
+
+		if ($direction == DESCENDING) {
+			$column = "-$column";
+			$expr = "-($expr)";
+		}
+															
+		push @exprs, $expr;
+		push @names, $column;
+	}
+	my $columns = join ':', @names;
+
+	my $code = 
+		'sub { no warnings "uninitialized"; '.
+			join(' or ', @exprs).
+		' }';
+	my $keycmp = eval $code;
+	if ($@) {
+		croak "Error compiling key comparer for index $columns [$code]: $@";
+	}
+
+	# TODO Add a case for when there is an existing index in the reverse order
+	# and create a new one by cloning it and then reversing.
+
+	if ($self->{-tables}{$table}{-indexes}{$columns}) {
+		return $self->{-tables}{$table}{-indexes}{$columns};
+	} else {
+		my $index = $self->{-tables}{$table}{-indexes}{$columns} =
+			Tree::BPTree->new(
+				-unique => $unique,
+				-keycmp => $keycmp,
+			);
+
+		my $data = $self->{-tables}{$table}{-data};
+		my $cursor = $data->new_cursor;
+		while (my ($oid, $row) = $cursor->next) {
+			my @key = @$row{@just_columns};
+			$index->insert(\@key, $oid);
+		}
+
+		return $index;
+	}
+}
 
 sub create_table {
 	my ($self, %args) = @_;
 	my ($name, $columns, $indexes) = @args{qw(-table -columns -indexes)};
 	$columns = { @$columns }; # the internal representation is a hash
-	$self->{-tables}{$name} = [ $columns, $indexes ];
+	$self->{-tables}{$name}{-structure} = [ $columns, $indexes ];
+
+	# Add a special index for the internal OID column
+	$self->{-tables}{$name}{-oid} = 0;
+	$self->{-tables}{$name}{-data} = Tree::BPTree->new(
+		-unique => 1, 
+		-keycmp => sub { $_[0] <=> $_[1] },
+		-valuecmp => sub { 0 }, # forces deletion of all values in a bucket
+	);
+
+	# Precreate indexes for indexed columns
+	for my $index (@$indexes) {
+		my @columns = @{$$index[1]};
+		$self->_find_or_build_index(
+			$name, 
+			$$index[0] == PRIMARY || $$index[0] == UNIQUE,
+			@columns,
+		);
+	}
+
+	# For each AUTONUMBER column, create a sequence and initialize it to 0
+	for my $column (keys %$columns) {
+		$self->{-tables}{$name}{-sequences}{$column} = 0;
+	}
+	
 	1
 }
 
@@ -105,7 +228,6 @@ sub delete_table {
 	my ($self, %args) = @_;
 	my $name = $args{-table};
 	delete $self->{-tables}{$name};
-	delete $self->{-data}{$name};
 	1
 }
 
@@ -140,56 +262,41 @@ sub _rewrite_regex {
 	$$re = "/$$re/$flags";
 }
 
-# =item $perlex = $self-E<gt>_rewrite_filter(\@tables, $filter, $i)
+# =item $perlex = $self-E<gt>_rewrite_filter(\%columns, $filter)
 #
-# Rewrites the given filter as a Perl expression for the generation of a
-# closure.
+# Rewrites the given filter as a Perl expression for the generation of a closure
+# the given C<%columns> tell the method how to rewrite the columns. Each key is
+# the name of a column name that needs to be rewritten to a Perl variable. The
+# value of the key is a two element list. The first element is the constant
+# NUMERIC, STRING, or TIMESTAMP to determine which operators should be used
+# against it and the second element is the name of the Perl variable to replace
+# the column with.
 #
+use constant TYPEFLAG   => 0;
+use constant PERLNAME   => 1;
+use constant TABLENUM   => 2;
+
 sub _rewrite_filter {
-	my ($self, $tables, $filter, $i) = @_;
+	my ($self, $columns, $filter) = @_;
 
-#debug#	croak "Bad instance." unless ref $self;
-
-	my (%columns, %lookup);
-	if (defined $i) {
-		my $name = ref $$tables[$i] ? $$tables[$i][0] : $$tables[$i];
-		my %tc = $self->columns(-table => $name);
-		my $number = $i + 1;
-		while (my ($k,$v) = each %tc) {
-			$columns{"$name.$k"} = $columns{$k} = $v;
-			$lookup{"$name.$k"} = $lookup{$k} = "\$t$number\->{$k}";
-		}
-	} else {
-		for ($i = 1; $i < @$tables; $i+=2) {
-			my $name = ref $$tables[$i] ? $$tables[$i][0] : $$tables[$i];
-			my $alias = $$tables[$i-1];
-			my %tc = $self->columns(-table => $name);
-			my $number = ($i + 1)/2;
-			while (my ($k,$v) = each %tc) {
-				$columns{"$alias.$k"} = $columns{$k} = $v;
-				$lookup{"$alias.$k"} = $lookup{$k} = "\$t$number\->{$k}";
-			}
-		}
-	}
-
+	# This closure is used as a shortcut
 	my $is_numeric = sub {
-		for my $operand (@_) {
-			if ($operand->isa('Persist::Filter::Number')) { 1 }
-			elsif ($operand->isa('Persist::Filter::Identifier')) {
-				croak "Unknown column $$operand." unless defined $columns{$$operand};
-				return ($columns{$$operand}[0] == REAL) ||
-					($columns{$$operand}[0] == BOOLEAN) ||
-					($columns{$$operand}[0] == INTEGER) ||
-					($columns{$$operand}[0] == AUTONUMBER)
-			}
+		my ($a, $b) = @_;
+		for my $id ($a, $b) {
+			return 1 if 
+					$id->isa('Persist::Filter::Identifier')
+				and defined $$columns{$$id} 
+				and @{$$columns{$$id}} > 0 
+				and $$columns{$$id}[TYPEFLAG] == NUMERIC;
 		}
-
-		return 0
+		return 0;
 	};
 
-#debug#	print STDERR $filter,"\n";
+	# We need to parse the filter to make it easy to process
 	my $ast = parse_filter($filter);
-	
+
+	# Walk the tree and convert any identifiers to the appropriate columns and
+	# change each comparison operator to the appropriate type.
 	$ast->remap_on('Persist::Filter::Comparison', sub {
 		(my $a, local $_, my $b) = @{$_[0]};
 
@@ -197,12 +304,15 @@ sub _rewrite_filter {
 		for my $ids ([$a, $b], [$b, $a]) {
 			my ($a, $b) = @$ids;
 			if ($a->isa('Persist::Filter::Identifier')
-					and $columns{$$a}[0] == TIMESTAMP
+					and $$columns{$$a}[TYPEFLAG] == TIMESTAMP
 					and $b->isa('Persist::Filter::String')) {
 				# TODO This is bad, we don't want to parse the date at every use!
 				$$b = "DateTime::Format::ISO8601->parse_datetime($$b)"
 			}
 		}
+
+		# FIXME Memory driver cannot handle filters where an identifier is used
+		# as the right side of a LIKE expression.
 
 		if 	  (/^=$/) 	{ ${$_[0]}[1] = &$is_numeric($a, $b) ? '==' : 'eq' }
 		elsif (/^<>$/)	{ ${$_[0]}[1] = &$is_numeric($a, $b) ? '!=' : 'ne' }
@@ -216,67 +326,17 @@ sub _rewrite_filter {
 		elsif (/^not\s+ilike$/) { ${$_[0]}[1] = '!~'; _rewrite_regex($b, 'i') }
 		else { croak "Unknown operator '$_'." }
 
-		if ($a->isa('Persist::Filter::Identifier')) {
-#debug#			print STDERR "$$a: $lookup{$$a}\n" unless defined($lookup{$$a});
-			$$a = $lookup{$$a};
+		for my $id ($a, $b) {
+			if ($id->isa('Persist::Filter::Identifier')) {
+				croak "Use of unknown column name $$id in filter" unless defined $$columns{$$id};
+				croak "Use of ambiguous column name $$id in filter" if @{$$columns{$$id}} == 0;
+				$$id = $$columns{$$id}[PERLNAME];
+			}
 		}
-		if ($b->isa('Persist::Filter::Identifier')) {
-#debug#			print STDERR "$$b: $lookup{$$b}\n" unless defined($lookup{$$b});
-			$$b = $lookup{$$b};
-		}
+
 	});
 
-	$ast->unparse
-}
-
-# =item $perlex = $self-E<gt>_rewrite_columns(\@tables, $filter)
-#
-# Performs some amount of discernment on how to combine filters and such while
-# calling C<_rewrite_filter> in the appropriate places.
-#
-sub _rewrite_columns {
-	my ($self, $tables, $filter) = @_;
-
-	my $result;
-	if (ref $filter) {
-		for (my $i = 0; $i < @$filter; ++$i) {
-			next unless $filter->[$i];
-			$filter->[$i] = $self->_rewrite_filter($tables, $filter->[$i], $i);
-		}
-
-		$result = join(" and ", map { $_ ? $_ : () } @$filter);
-	} elsif ($filter) {
-		$result = $self->_rewrite_filter($tables, $filter);
-	} else {
-		$result = undef;
-	}
-
-#debug#	print STDERR "$result\n";
-	$result;
-}
-
-# =item $closure = _filter_closure($num, $filter)
-#
-# Creates a closure that takes C<$num> row data arguments. The C<$filter>
-# argument is a stringified Perl expression. The C<$closure> returned is a
-# reference to a subroutine that takes C<$num> row data arguments and
-# applies those arguments to the expression defined in C<$filter>.
-#
-sub _filter_closure {
-	my ($num, $filter) = @_;
-
-	my $closure;
-	if ($filter) {
-		$closure = "sub { no warnings; ";
-		for (1 .. $num) { $closure .= "my \$t$_ = shift; " }
-		$closure .= $filter;
-		$closure .= " }";
-	} else {
-		$closure = "sub { 1 }";
-	}
-
-#debug#	print STDERR "$closure\n";
-	eval $closure;
+	return $ast->unparse;
 }
 
 =item $handle = $driver-E<gt>open_table($table [, $filter ])
@@ -285,17 +345,56 @@ Returns a handle for accessing the data in the table.
 
 =cut
 
-use constant TABLE => 0;
-use constant FILTER => 1;
-use constant JOIN => 2;
-use constant COUNTER => 3;
-
 sub open_table {
 	my ($self, %args) = @_;
-	my ($table, $filter) = @args{qw(-table -filter)};
-	my $closure = _filter_closure(1, 
-			$self->_rewrite_columns([ $table ], [ $filter ]));
-	[ $table, $closure, undef, 0 ];
+	my ($table, $filter, $order, $offset, $limit) = 
+		@args{qw(-table -filter -order -offset -limit)};
+	$offset = 0 unless defined $offset;
+	$limit  = 0 unless defined $limit;
+
+	# Setup the cursor. If a specific ordering is given, then we need to have an
+	# index based upon that order. If no ordering is given, use the -data index
+	# from oids to rows.
+	my $cursor;
+	if (defined $order) {
+		$cursor = $self->_find_or_build_index($table, 0, @$order)->new_cursor;
+	} else {
+		$cursor = $$self{-tables}{$table}{-data}->new_cursor;
+	}
+
+	# Rewrites the filter or skips the process altogether if no filter is given
+	my $closure;
+	if (defined $filter) {
+		# We prepare the hash reference to decide how each column should be
+		# rewritten.
+		my %columns = $self->columns(-table => $table);
+		my $columns;
+		for my $k (keys %columns) {
+			$$columns{$k} = [
+				$self->_type_flag($table, $k),
+				"\$_[0]{$k}",
+			];
+		}
+
+		# Rewrite the filter to a Perl expression, turn it into a subroutine,
+		# and compile it.
+		$closure = eval (
+			'sub { no warnings "uninitialized"; '. 
+				$self->_rewrite_filter($columns, $filter).
+			' }'
+		);
+	}
+
+	# Return the handle
+	{ 
+		TABLE          => $table, 
+		FILTER         => $closure, 
+		OFFSET         => $offset, 
+		LIMIT          => $limit, 
+		CURRENT_OFFSET => 0, 
+		CURRENT_LIMIT  => 0, 
+		CURSOR         => $cursor,
+	}
 }
 
 =item $handle = $driver-E<gt>open_join(%args)
@@ -304,88 +403,246 @@ Returns a handle for accessing a joined set of tables.
 
 =cut
 
+sub _get_order_runs {
+	my ($self, $tables, $columns, $order) = @_;
+
+	# They have given us an order, we must gather the order columns into "runs".
+	# Each run contains columns from the same table in the order specified. The
+	# runs will be kept in the order given. Each run will have a cursor
+	# associated with it. The tables that have zero runs in the order list, will
+	# use the default oid->row cursor, which will be appended to the end (in no
+	# particular order).
+	
+	# Find the runs by constructing an array of arrays. The first element of
+	# each child array is the index into the passed tables array.  The rest of
+	# the elements are the list of columns for that table in the same format as
+	# $order.
+	my $last_table = -1;
+	my @runs;
+	my %seen_tables;
+	for (my $i = 0; $i < @$order; ++$i) {
+		my $spec = $$columns{$$order[$i]};
+		croak "Use of unknown column name $$order[$i] in order"
+			unless defined $spec;
+		croak "Use of ambiguous column name $$order[$i] in order"
+			if @$spec == 0;
+
+		if ($$spec[TABLENUM] ne $last_table) {
+			++$seen_tables{$last_table = $$spec[TABLENUM]};
+			push @runs, [ $last_table ];
+		}
+
+		no warnings "numeric";
+		push @{$runs[$#runs]}, $$order[$i];
+		push @{$runs[$#runs]}, $$order[++$i] 
+			if $i < $#$order and ($$order[$i + 1] == ASCENDING or $$order[$i + 1] == DESCENDING);
+	}
+
+	# Find any tables which remain and stick them on the end
+	for my $i (0 .. $#$tables) {
+		unless ($seen_tables{$i}) {
+			push @runs, [ $i ];
+		}
+	}
+
+	return @runs;
+}
+
+# determines if there is a path from $x to $y
+sub _has_path {
+	my ($self, $g, $x, $y) = @_;
+	
+	my %seen = ( $x => 1 );
+	my @traverse = ( $g->successors($x) );
+	while (@traverse) {
+		my $vertex = shift @traverse;
+		
+		return 1 if $vertex eq $y;
+		
+		next if $seen{$vertex};
+		
+		$seen{$vertex}++;
+		push @traverse, $g->successors($vertex);
+	}
+
+	return 0;
+}
+	
 sub open_join {
 	my ($self, %args) = @_;
-	my ($tables, $filter) = @args{qw(-tables -filter)};
-	my $filt_clos = _filter_closure(scalar(@$tables), 
-			$self->_rewrite_columns($tables, $filter));
-	
-	my %number;
-	my $i = 0;
-	for my $table (@$tables) {
-		my $name = ref $table ? $table->[0] : $table;
-		$number{$name} = ++$i;
+	my ($tables, $on, $filter, $order, $offset, $limit) = 
+		@args{qw(-tables -on -filter -order -offset -limit)};
+	$offset = 0 unless defined $offset;
+	$limit  = 0 unless defined $limit;
+
+	# We want to create an initial version of this columns hash as it will be
+	# reused by different parts of this method. Ordering may change it. We also
+	# setup ambiguity checking by setting column specs that appear twice to an
+	# empty column spec. If these columns are used later, croaking will
+	# commence--some of this may be temporarily undone when constructing
+	# filters.
+	my $columns;
+	my %seen_tables;
+	for my $i (0 .. $#$tables) {
+		my $name = $$tables[$i];
+		my $table_num = ++$seen_tables{$name};
+		
+		my %columns = $self->columns(-table => $$tables[$i]);
+		my @column_names = keys %columns;
+		for my $j (0 .. $#column_names) {
+			my $column = $column_names[$j];
+				
+			my $numeric = $self->_type_flag($name, $column);
+			my $to = "\$_[$i]{$column}";
+
+			for my $prefix ('', ($i + 1).".", "$name.", "$name$table_num.") {
+				if (defined $$columns{"$prefix$column"}) {
+					$$columns{"$prefix$column"} = [];
+					next;
+				} 
+				
+				$$columns{"$prefix$column"} = [ $numeric, $to, $i ];
+			}
+		}
 	}
 
-	my $join_closure_sub = "sub { no warnings; ";
-	for $i (1 .. scalar(@$tables)) { 
-		$join_closure_sub .= "my \$t$i = shift; " 
-	}
-	
-	my (@joins, %joined);
-	for my $table (@$tables) {
-		my $name = ref $table ? $table->[0] : $table;
+	# If they have given us an order, we need to process that to discover our
+	# cursors. Otherwise, we use the default oid->row cursors.
+	my (@cursors, @exprs);
+	if (defined $order) {
+		my @runs = $self->_get_order_runs($tables, $columns, $order);
 
-		my @indexes = $self->indexes(-table => $name);
-		for my $index (@indexes) {
-			if ($index->[0] == LINK) {
-				my $lflds = $index->[1];
-				my $fname = $index->[2];
-				my $rflds = $index->[3];
-				if ($number{$fname} and 
-						(not $joined{$name} or not $joined{$fname})) {
-					my %cols = $self->columns(-table => $name);
-					push @joins,
-						map { 
-							my $op = $cols{$$lflds[$_]}[0] == VARCHAR ? 'eq' : '==';
-							"\$t$number{$name}->\{$lflds->[$_]\} $op \$t$number{$fname}->\{$rflds->[$_]\}" }
-							0 .. $#$lflds;
+		# We now have a list of runs, so let's find the cursors and create the
+		# combiner expressions our inter-table joins.
+		my %seen_tables;
+		my %numbers;
+		for (my $i = 0; $i < @runs; ++$i) {
+			my $table = shift @{$runs[$i]};
+			my $cols  = $runs[$i];
+		
+			if (defined $seen_tables{$table}) {
+				# There is another run for this table. We must prepend all the
+				# columns of the previous run(s), add a join expression so that
+				# we guarantee that all the values that are found in both runs
+				# of the ordered values are always the same.
+			
+				# The index of the cursor previously inserted for this table
+				# will be found in $prev_cursor.
+				my $prev_cursor = pop @{$seen_tables{$table}};
+		
+				# For each of the columns add an equality expression to the list
+				# of joins
+				for my $column (@{$seen_tables{$table}}) {
+					my $op = $$columns{$column}[TYPEFLAG] == NUMERIC ? '==' : 'eq';
+					push @exprs, "\$_[$prev_cursor]{$column} $op \$_[$i]{$column}";
+				}
+
+				# Add the current columns to the seen list in case there's
+				# another run for the same table after this one
+				push @{$seen_tables{$table}}, @$columns;
+				push @{$seen_tables{$table}}, $i;
+			} else {
+				# Add the current columns to the seen list in case there's a run
+				# for the same table later
+				$seen_tables{$table} = [ @$cols, $i ];
+			}
+			
+			if (@$cols == 0) {
+				# In this case, it's one of the unordered tables at the end
+				push @cursors, $self->{-tables}{$$tables[$table]}{-data}->new_cursor;
+			} else {
+				# Here, we need to find a matching index for an ordered column
+				# list
+				push @cursors, $self->_find_or_build_index($$tables[$table], 0, @$cols)->new_cursor;
+			}
+
+			# We also should adjust the elements of $columns to reflect the
+			# actual cursor positions--which may now differ from the order given
+			# in $tables.
+			my $name = $$tables[$table];
+			my $table_num = ++$numbers{$name};
+			my %columns = $self->columns(-table => $name);
+			my @column_names = keys %columns;
+			for my $j (0 .. $#column_names) {
+				my $column = $column_names[$j];
+				for my $prefix ('', ($table + 1).".", "$name.", "$name$table_num.") {
+					if (@{$$columns{"$prefix$column"}} != 0) {
+						my $to = "\$_[$i]{$column}";
+						$$columns{"$prefix$column"}[PERLNAME] = $to;
+					}
+				}
+			}
+		}
+	} else {
+		@cursors = map { $$self{-tables}{$_}{-data}->new_cursor } @$tables;
+	}
+
+	# Let's not do any work at all if they haven't given us a filter.
+	push @exprs, $self->_rewrite_filter($columns, $filter)
+		if defined $filter;
+
+	if (defined $on) {
+		# This join is explicit, just join according to their expressions
+		$on = [ $on ] unless ref $on;
+		push @exprs, map { defined $_ ? $self->_rewrite_filter($columns, $_) : () } @$on;
+	} else {
+		# This is an implicit join, so we figure out how to join the tables
+		# together.
+		my %joinees;
+		for my $i (1 .. @$tables) {
+			croak "Cannot implicitly join a table to itself; use the -on option instead."
+				if $joinees{$$tables[$i - 1]};
+			$joinees{$$tables[$i - 1]} = $i;
+		}
+
+		my %joined;
+		for my $i (0 .. $#$tables) {
+			my $name = $$tables[$i];
+			
+			# Loop through the indexes and connect any tables that haven't been
+			# joined 
+			my @indexes = $self->indexes(-table => $name);
+			for my $index (@indexes) {
+				if ($index->[0] == LINK) {
+					my $lflds = $index->[1];
+					my $fname = $index->[2];
+					my $rflds = $index->[3];
+
+					# Join only if one, the other, or both have not yet been
+					# joined
+					unless ($joined{$name} and $joined{$fname}) {
+						for my $j (0 .. $#$lflds) {
+							my $first  = $$columns{($i + 1).".$$lflds[$j]"}[PERLNAME];
+							my $op     = $$columns{($i + 1).".$$lflds[$j]"}[TYPEFLAG] == NUMERIC ? '==' : 'eq';
+							my $second = $$columns{$joinees{$fname}.".$$rflds[$j]"}[PERLNAME];
+							push @exprs, "($first $op $second)";
+						}
+						$joined{$name}  = 1;
+						$joined{$fname} = 1;
+					}
 				}
 			}
 		}
 	}
-	$join_closure_sub .= join(" and ", @joins);
-	$join_closure_sub .= " }";
 
-#debug#	print STDERR "join_closure_sub: $join_closure_sub\n";
-
-	my $join_clos = eval $join_closure_sub;
-	[ $tables, $filt_clos, $join_clos, ( 0 ) x scalar(@$tables) ];
-}
-
-=item $handle = $driver-E<gt>open_explicit_join(%args)
-
-Returns a handle for accessing an explicitly joined set of tables.
-
-=cut
-
-sub open_explicit_join {
-	my ($self, %args) = @_;
-	my ($tables, $on_exprs, $filter) = @args{qw(-tables -on_exprs -filter)};
-	my $filt_clos = _filter_closure(scalar(@$tables)/2,
-			$self->_rewrite_columns($tables, $filter, 1));
-
-	my $join_closure_sub = "sub { no warnings; ";
-	my (@tables, %aliases);
-	for my $i (0 .. $#$tables) {
-		push @tables, $tables->[$i] if $i % 2;
-		$aliases{$tables->[$i]} = $i/2 + 1 unless $i % 2;
-		
-		my $n = $i/2 + 1;
-		$join_closure_sub .= "my \$t$n = shift; " unless $i % 2;
+	my $closure;
+	if (@exprs) {
+		my $code = 
+			'sub { no warnings "uninitialized"; '.
+				join(' and ', @exprs).
+			' }';
+		$closure = eval $code;
 	}
-	
-#	for my $i (0 .. $#$on_exprs) {
-#		$on_exprs->[$i] =~ s/(\w+).(\w+)/\$t$aliases{$1}\->\{$2\}/g;
-#	}
 
-	my $on_expr = join(" and ", @$on_exprs);
-	my $join_expr = $self->_rewrite_columns($tables, $on_expr);
-	$join_closure_sub .= $join_expr . " }";
-#debug#	print STDERR "$join_closure_sub\n";
-	my $join_clos = eval $join_closure_sub;
-	
-	[ [ @tables ], $filt_clos, $join_clos, ( 0 ) x (scalar(@$tables)/2) ];
+	{
+		TABLE          => $tables, 
+		FILTER         => $closure, 
+		OFFSET         => $offset, 
+		LIMIT          => $limit, 
+		CURRENT_OFFSET => 0, 
+		CURRENT_LIMIT  => 0, 
+		CURSORS        => [ @cursors ],
+	}
 }
 
 =item $rows = $driver-E<gt>insert(%args)
@@ -400,16 +657,33 @@ sub insert {
 	my ($self, %args) = @_;
 	my ($name, $values) = @args{qw(-table -values)};
 	my %columns = $self->columns(-table => $name);
+	my $table = $self->{-tables}{$name};
 
+	# Make sure columns are setup properly
 	while (my ($column, $type) = each %columns) {
 		if ($type->[0] == AUTONUMBER) {
-			$values->{$column} = ++$self->{-sequences}{$name}{$column};
+			$values->{$column} = ++$table->{-sequences}{$column};
 		} elsif ($type->[0] == TIMESTAMP and defined $values->{$column}) {
 			$values->{$column} = DateTime::Format::ISO8601->parse_datetime($values->{$column});
 		}
 	}
 	
-	push @{$self->{-data}{$name}}, { %$values };
+	# Insert new oid/row pair into oid-index
+	my $oid = ++$table->{-oid};
+	$table->{-data}->insert($oid, { %$values });
+
+	# Insert column-values/oid pair into each other index
+	my $indexes = $table->{-indexes};
+	while (my ($columns, $oids) = each %$indexes) {
+		my @columns;
+		for (split /:/, $columns) {
+			s/^-//;
+			push @columns, $_;
+		}
+		my @key = @$values{@columns};
+		$oids->insert(\@key, $oid);
+	}
+	
 	1;
 }
 
@@ -426,24 +700,37 @@ sub update {
 	my ($self, %args) = @_;
 	my ($name, $set, $filter, $bindings) = @args{qw(-table -set -filter -bindings)};
 
+	# Rewrite set columns to be in proper format
 	my %columns = $self->columns(-table => $name);
+	my $columns;
 	while (my ($column, $type) = each %columns) {
 		if ($type->[0] == TIMESTAMP and defined $set->{$column}) {
 			$set->{$column} = DateTime::Format::ISO8601->parse_datetime($set->{$column});
 		}
+		
+		$$columns{$column} = [ $self->_type_flag($name, $column), "\$_[0]{$column}" ];
 	}
 
-	my $rewritten = $self->_rewrite_columns([ $name ], [ $filter ]);
+	# Rewrite filter columns to be in proper format
 	if ($bindings) {
 		for my $binding (@$bindings[0 .. $#$bindings]) {
-			$rewritten =~ s/\?/'$binding'/;
+			$filter =~ s/\?/'$binding'/;
 		}
 	}
+	
+	my $closure = eval (
+		'sub { no warnings "uninitialized"; '.
+			$self->_rewrite_filter($columns, $filter).
+		' }'
+	);
 
+	# Generate a closure to match rows with
 	my $changed = 0;
-	my $closure = _filter_closure(1, $rewritten); 
 
-	for my $row (@{$self->{-data}{$name}}) {
+	# Iterate through rows altering the table whenever we find a match to our
+	# closure.
+	my $rows = $self->{-tables}{$name}{-data}->new_cursor;
+	while (my ($oid, $row) = $rows->each) {
 		if (&$closure($row)) {
 			while (my ($key, $val) = each %$set) { 
 				$row->{$key} = $val;
@@ -464,23 +751,30 @@ Deletes the table rows specified by filter.
 sub delete {
 	my ($self, %args) = @_;
 	my ($name, $filter, $bindings) = @args{qw(-table -filter -bindings)};
-	my $rewritten = $self->_rewrite_columns([ $name ], [ $filter ]);
+
+	my %columns = $self->columns(-table => $name);
+	my $columns;
+	$$columns{$_} = [ $self->_type_flag($name, $_), "\$_[0]{$_}" ] for (keys %columns);
+
 	if ($bindings) {
 		for my $binding (@$bindings[0 .. $#$bindings]) {
-			$rewritten =~ s/\?/'$binding'/;
+			$filter =~ s/\?/'$binding'/;
 		}
 	}
+	
+	my $closure = eval (
+		'sub { no warnings "uninitialized"; '.
+			$self->_rewrite_filter($columns, $filter).
+		' }'
+	);
 
-	my $closure = _filter_closure(1, $rewritten);
-
-	my $changed;
-	if (defined $self->{-data}{$name}) {
-		my $orig_count = scalar(@{$self->{-data}{$name}});
-		my @unmatched = grep { not &$closure($_) } @{$self->{-data}{$name}};
-		$changed = $orig_count - @unmatched;
-		$self->{-data}{$name} = [ @unmatched ];
-	} else {
-		$changed = 0;
+	my $changed = 0;
+	my $data = $self->{-tables}{$name}{-data}->new_cursor;
+	while (my ($oid, $row) = $data->next) {
+		if (&$closure($row)) {
+			$data->delete;
+			$changed++;
+		}
 	}
 	
 	$changed;
@@ -497,8 +791,8 @@ sub columns {
 	my $table = $args{-table};
 #debug#	croak "Table $table not found." unless defined($self->{-tables}{$table});
 #debug#	croak "Bad instance." unless ref $self;
-#debug#	croak "No table given." unless $table;
-	%{$self->{-tables}{$table}[0]};
+#debug#	Carp::confess "No table given." unless $table;
+	%{$self->{-tables}{$table}{-structure}[0]};
 }
 
 =item @indexes = $driver-E<gt>indexes(%args)
@@ -514,7 +808,7 @@ sub indexes {
 	croak "Table $table is not known."
 			unless defined $self->{-tables}{$table};
 
-	@{$self->{-tables}{$table}[1]};
+	@{$self->{-tables}{$table}{-structure}[1]};
 }
 
 # =item $results = $self-E<gt>_join($handle)
@@ -527,87 +821,92 @@ sub indexes {
 sub _join {
 	my ($self, $handle) = @_;
 
+	# If we've reached the limit set, then we quit now
+	return undef if $handle->{LIMIT} > 0 
+				and $handle->{CURRENT_LIMIT} == $handle->{LIMIT};
+
 #debug#	croak "Join closure not valid." unless defined($handle->[JOIN]);
 #debug#	croak "Filter closure not valid." unless defined($handle->[FILTER]);
 
-	if ($handle->[COUNTER] < 0) {
-		return undef;
-	}
+	my $filter = $handle->{FILTER};
 
+#	use Data::Dumper;
+#	print STDERR Dumper($self);
+#	print STDERR Dumper($handle);
+
+	# Iterate until we find a matching row
 	my @data;
-	my $match;
-	do {
-		# Fetch data from the latest row
-		@data = ();
-		my $i = COUNTER;
-		for my $table (@{$handle->[TABLE]}) {
-			my $name = ref $table ? $table->[0] : $table;
+	while (1) {
+		do {
+			@data = ();
 
-			if (not defined $self->{-data}{$name} or @{$self->{-data}{$name}} == 0) {
-				# if any table has no data, no records can be returned, we're
-				# done. Let's keep it that way too.
-				$handle->[COUNTER] = -1;
-				return undef;
+			# Iterate through all available tables to construct potential matches
+			# from groups of rows
+			my $last_wrapped = 1;
+			my $cursors = $handle->{CURSORS};
+			for my $i (reverse(0 .. $#$cursors)) {
+				if ($last_wrapped) {
+					if (my ($oid, $row) = $cursors->[$i]->next) {
+						$data[$i] = $row;
+						$last_wrapped = 0;
+					} elsif ($i == 0) {
+						# The first table has reached the end, so we're done
+						# iterating
+						return undef;
+					} else {
+						# if we failed before, the row should be reset
+						if (my ($oid, $row) = $cursors->[$i]->next) {
+							$data[$i] = $row;
+							# we can leave $last_wrapped unchanged because we've
+							# just wrapped
+						} else {
+							# Fail twice means a table is empty, we can quit
+							return undef;
+						}
+					}
+				} else {
+					if (my ($oid, $row) = $cursors->[$i]->current) {
+						$data[$i] = $row;
+					} elsif (($oid, $row) = $cursors->[$i]->next) {
+						# We're here because next has not been called since the join
+						# was opened or first was called, so we have to call next
+						# the very first time on this index
+						$data[$i] = $row;
+					} else {
+						# Fail twice means a table is emtpy, we can quit
+						return undef;
+					}
+				}
 			}
-			
-			push @data, $self->{-data}{$name}[$handle->[$i]];
-			$i++;
-		}
 
-		# Update all counters, wrap counter to 0 if a roll-over occurs
-		for my $table (reverse(@{$handle->[TABLE]})) {
-			my $name = ref $table ? $table->[0] : $table;
-			$i--;
-		
-			$handle->[$i]++;
-			if ($handle->[$i] > $#{$self->{-data}{$name}}) {
-				$handle->[$i] = 0;
-			} else {
-				last;
+			for my $i (0 .. $#data) {
+				unless (ref $data[$i]) {
+					$data[$i] = $$self{-tables}{$$handle{TABLE}[$i]}{-data}->find($data[$i]);
+				}
+
+#				if (defined $data[$i]{name}) {
+#					print STDERR "<$data[$i]{name}>\n";
+#				} else {
+#					print STDERR "<$data[$i]{color}>\n";
+#				}
 			}
-		}
 
-		# Make sure we don't fall off the end and 0 everything, if we do, mark
-		# as finished
-		my $found = 0;
-		for my $index (@$handle[COUNTER .. $#$handle]) {
-			if ($index != 0) {
-				$found++;
-				last;
-			}
-		}
+		} until (&$filter(@data));
 
-		# When all counters have rolled-over to 0, tell us to STOP!
-		unless ($found) {
-			$handle->[COUNTER] = -1;
-		}
-
-		# See if the row matches the appropriate criteria
-		$match = &{$handle->[JOIN]}(@data) && &{$handle->[FILTER]}(@data);
-	} until ($match || $handle->[COUNTER] == -1);
-
-	# Dump out if we ended the search loop on end of table rather than match
-	return undef unless $match;
-
-	my %result;
-	my $i = 0;
-	for my $table (@{$handle->[0]}) {
-		my ($name, $alias);
-		if (ref $table) {
-			($name, $alias) = @$table;
-			$alias .= '_';
+		if ($handle->{CURRENT_OFFSET} < $handle->{OFFSET}) {
+			++$handle->{CURRENT_OFFSET};
+			next;
+		} elsif ($handle->{LIMIT} > 0 and $handle->{CURRENT_LIMIT} < $handle->{LIMIT}) {
+			++$handle->{CURRENT_LIMIT};
+			last;
+		} elsif ($handle->{LIMIT} > 0) {
+			return undef;
 		} else {
-			$name = $table;
-			$alias = '';
+			last;
 		}
+	}								  
 
-		while (my ($key, $val) = each %{$data[$i]}) {
-			$result{"$alias$key"} = $val;
-		}
-		$i++;
-	}
-
-	\%result;
+	return \@data;
 }
 
 # =item $results = $self-E<gt>_no_join($handle)
@@ -619,29 +918,33 @@ sub _join {
 sub _no_join {
 	my ($self, $handle) = @_;
 
-	return undef if $handle->[COUNTER] < 0;
-		
-	my $table = $handle->[TABLE];
-	my $closure = $handle->[FILTER];
-	my $i = \$handle->[COUNTER];
-	my $data = $self->{-data}{$table};
+	# Stop now if all records to be returned have been returned
+	return undef if $handle->{LIMIT} > 0
+				and $handle->{CURRENT_LIMIT} == $handle->{LIMIT};
 
-#debug#	print STDERR "table : $table\n";
-#debug#	print STDERR "closure : $closure\n";
-#debug#	print STDERR "i : $i\n";
-#debug#	print STDERR "data : $data\n";
+	my $cursor = $handle->{CURSOR};
+	my $filter = $handle->{FILTER};
+	while (my ($oid, $row) = $cursor->next) {
+		++$handle->{CURRENT_LIMIT} if $handle->{CURRENT_OFFSET} == $handle->{OFFSET}
+								  and $handle->{LIMIT} > 0
+							  	  and $handle->{CURRENT_LIMIT} < $handle->{LIMIT};
 	
-	until ($$i > $#$data || &$closure($data->[$$i])) {
-		$$i++;
+		if ($handle->{CURRENT_OFFSET} < $handle->{OFFSET}) {
+			++$handle->{CURRENT_OFFSET};
+			next;
+		}
+
+		if ((defined $filter and &$filter($row)) or !defined $filter) {
+			unless (ref $row) {
+				my $value = $$self{-tables}{$$handle{TABLE}}{-data}->find($row);
+				return { %{$value} };
+			} else {
+				return { %{$row} };
+			}
+		}
 	}
 
-	# return reference to new value, not reference to real data
-	my $result = $$i > $#$data ? undef : { %{$data->[$$i]} };
-	$$i++;
-
-	$$i = -1 if $$i > $#$data;
-		
-	$result;
+	return undef;
 }
 
 =item $row = $driver-E<gt>first($handle)
@@ -653,15 +956,20 @@ very much more overhead than a call to C<next>.
 
 sub first {
 	my ($self, %args) = @_;
-	my $handle = $args{-handle};
+	my ($handle, $bytable) = @args{qw( -handle -bytable )};
 
-	if (ref $handle->[TABLE]) {
-		for (COUNTER .. $#$handle) {
-			$handle->[$_] = 0;
+	if (ref $handle->{TABLE}) {
+		for (@{$handle->{CURSORS}}) {
+			$_->reset;
 		}
-		return $self->_join($handle);
+		my $data = $self->_join($handle);
+		if ($bytable) {
+			return $data;
+		} else {
+			return +{ map { %$_ } @$data } if defined $data;
+		}
 	} else {
-		$handle->[COUNTER] = 0;
+		$handle->{CURSOR}->reset;
 		return $self->_no_join($handle);
 	}
 }
@@ -674,11 +982,15 @@ Retrieves the next column matched by the handle.
 
 sub next {
 	my ($self, %args) = @_;
-	my $handle = $args{-handle};
+	my ($handle, $bytable) = @args{qw( -handle -bytable )};
 
-	if (ref $handle->[TABLE]) {
-		my $result = $self->_join($handle);
-		return $result;
+	if (ref $handle->{TABLE}) {
+		my $data = $self->_join($handle);
+		if ($bytable) {
+			return $data;
+		} else {
+			return +{ map { %$_ } @$data } if defined $data;
+		}
 	} else {
 		return $self->_no_join($handle);
 	}
@@ -694,7 +1006,7 @@ sub sequence_value {
 	my ($self, %args) = @_;
 	my ($table, $column) = @args{qw(-table -column)};
 
-	$self->{-sequences}{$table}{$column};
+	$self->{-tables}{$table}{-sequences}{$column};
 }
 
 =back

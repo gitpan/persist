@@ -6,15 +6,25 @@
    such a call is legal.
 3. [./Persist/Filter/Filter.pm] Add a direct date syntax instead of using
    the rather klugey string-magically-becomes-a-date-when-needed semantics.
-4. [./Persist/Driver/Driver.pm] We need an API to allow for the discovery
+4. [./Persist/Driver/Driver.pm] Design a driver testing kit that
+   establishes a battery of tests that all drivers must pass--rather than
+   having an individual test kit for each driver.
+5. [./Persist/Driver/Driver.pm] We need an API to allow for the discovery
    of what parameters are necessary for creating/deleting/connecting to
    sources. Perhaps something similar to a table definition to take
    advantage of our metadata system.
-5. [./Persist/Driver/Driver.pm] Design a way for update to perform a
+6. [./Persist/Driver/Driver.pm] Design a way for update to perform a
    filtered update. That is, it would be nifty to do something like
    update('table', value => sub { $_ + 1 }) or something similar that could
    be used by the back-end in the most appropriate way.
-6. [./Persist/Driver/Memory/Memory.pm] This is bad, we don't want to parse
+7. [./Persist/Driver/Memory/Memory.pm] When creating temporary indexes used
+   during open_* operations when $order is present, we should make the
+   references to those weak, so that they disappear when no more cursors
+   refer to them.
+8. [./Persist/Driver/Memory/Memory.pm] Add a case for when there is an
+   existing index in the reverse order and create a new one by cloning it
+   and then reversing.
+9. [./Persist/Driver/Memory/Memory.pm] This is bad, we don't want to parse
    the date at every use!
-7. [./Persist/Driver/DBI/PostgreSQL/PostgreSQL.pm] Combine common code in
-   first and next.
+10. [./Persist/Driver/DBI/PostgreSQL/PostgreSQL.pm] Combine common code in
+    first and next.

@@ -9,7 +9,7 @@ use Persist::Tabular;
 our @ISA = qw(Persist::Tabular);
 
 our $AUTOLOAD;
-our ( $VERSION ) = '$Revision: 1.5 $' =~ /\$Revision:\s+([^\s]+)/;
+our ( $VERSION ) = '$Revision: 1.7 $' =~ /\$Revision:\s+([^\s]+)/;
 
 =head1 NAME
 
@@ -29,11 +29,12 @@ Persist::Join - Data abstraction representing the joining of multiple tables
 	  print $join->name, "\n";
   }
 
-  # For explicit joins where there is no FOREIGN KEY, or implicit joining is
+  # For explicit joins where there is no foreign key, to join a table to itself,
+  # tables have multiple foreign keys between each otheror implicit joining is
   # undesirable
-  $join = $source->explicit_join(
-                        { O => 'Folks', A => 'Favorites' },
-                        [ "O.fid = A.fid" ], "A.color = 'Blue'");
+  $join = $source->join(-tables => [ 'Folks', 'Favorites' ],
+                        -on     => [ "1.fid = 2.fid" ],
+                        -filter => "Favorites.color = 'Blue'");
 
 =head1 DESCRIPTION
 
@@ -43,62 +44,43 @@ documented there.
 
 =over
 
-=item $join = $source->join($tables, $filters)
+=item $join = $source->join($tables [, $on, $filters, \@order, $offset, $limit ])
 
 See L<Persist::Source> for details.
 
 =cut
 
 sub new {
-	my ($class, $driver, $tables, $filter) = @_;
+	my ($class, $driver, $tables, $on, $filter, $order, $offset, $limit) = @_;
 
 	my $self = bless {}, ref $class || $class;
 	$self->{-driver} = $driver;
 	$self->{-tables} = $tables;
+	$self->{-on}     = $on;
 	$self->{-filter} = $filter;
-
-	$self;
-}
-
-=item $join = $source->explicit_join($tables, $on_exprs, $filter)
-
-See L<Persist::Source> for details.
-
-=cut
-
-sub new_explicit {
-	my ($class, $driver, $tables, $on_exprs, $filter) = @_;
-
-	my $self = bless {}, ref $class || $class;
-	$self->{-explicit} = 1;
-	$self->{-driver} = $driver;
-	$self->{-tables} = $tables;
-	$self->{-on_exprs} = (ref $on_exprs ? $on_exprs : [ $on_exprs ]);
-	$self->{-filter} = $filter;
+	$self->{-order}  = $order;
+	$self->{-offset} = $offset;
+	$self->{-limit}  = $limit;
 
 	$self;
 }
 
 # =item $self-E<gt>_open($reset)
 #
-# Tells the driver to open a join or an explicit join.
+# Tells the driver to open a join.
 #
 sub _open {
 	my ($self, $reset) = @_;
 
 	if ($reset or not $self->{-handle}) {
-		if ($self->{-explicit}) {
-			$self->{-handle} = $self->{-driver}->open_explicit_join(
-				-tables		=> $self->{-tables},
-				-on_exprs	=> $self->{-on_exprs},
-				-filter		=> $self->{-filter},
-			);
-		} else {
-			$self->{-handle} = $self->{-driver}->open_join(
-				-tables		=> $self->{-tables},
-				-filter		=> $self->{-filter},
-			);
-		}
+		$self->{-handle} = $self->{-driver}->open_join(
+			-tables		=> $self->{-tables},
+			-on         => $self->{-on},
+			-filter		=> $self->{-filter},
+			-order		=> $self->{-order},
+			-offset		=> $self->{-offset},
+			-limit		=> $self->{-limit},
+		);
 	}
 }
 

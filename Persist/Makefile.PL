@@ -8,6 +8,6 @@ WriteMakefile(
     MAN3PODS        => { 'Overview.pod' => '$(INST_MAN3DIR)/Persist::Overview.3pm' },
     PM              => { 
 		'Overview.pod' => '$(INST_LIBDIR)/Persist/Overview.pod',
-		'Persist.pm'   => '$(INST_LIBDIR)/Persist.pm'
+		'Persist.pm'   => '${INST_LIBDIR}/Persist.pm',
 	},
 );

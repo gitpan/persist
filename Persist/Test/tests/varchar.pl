@@ -1,127 +1,118 @@
 # vim: set ft=perl :
 
-use Test::More;
+use English;
+use Test::More tests => 40;
+use Persist::Test ':driver';
 
-use lib "$ENV{PWD}";
-require 'testsetup';
+my $driver = init;
 
-plan tests => 40 unless $skippg;
-plan skip_all => $skippg if $skippg;
+create_n_fill($driver);
 
 eval {
-	@conn = &pgconn(); shift @conn;
-	$driver = new Persist::Driver::DBI::PostgreSQL(@conn);
-
-	$driver->create_table(@folks);
-
-	for $folk (@folks_data) {
-		$driver->insert(-table => 'folks', -values => { name => $folk->{name} });
-	}
-
 	$sth = $driver->open_table(-table => 'folks', -filter => "name < 'Laura'");
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'Gregg', 'Record test.');
+	is($row->{name}, 'Gregg', 'Record test.');
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'James', 'Record test.');
+	is($row->{name}, 'James', 'Record test.');
 	$row = $driver->next(-handle => $sth);
 	ok(!$row, 'Record test.');
 
 	$sth = $driver->open_table(-table => 'folks', -filter => "name > 'Laura'");
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'Sterling', 'Record test.');
+	is($row->{name}, 'Sterling', 'Record test.');
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'Terri', 'Record test.');
+	is($row->{name}, 'Terri', 'Record test.');
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'Rhonda', 'Record test.');
+	is($row->{name}, 'Rhonda', 'Record test.');
 	$row = $driver->next(-handle => $sth);
 	ok(!$row, 'Record test.');
 
 	$sth = $driver->open_table(-table => 'folks', -filter => "name <= 'Laura'");
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'Gregg', 'Record test.');
+	is($row->{name}, 'Gregg', 'Record test.');
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'James', 'Record test.');
+	is($row->{name}, 'James', 'Record test.');
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'Laura', 'Record test.');
+	is($row->{name}, 'Laura', 'Record test.');
 	$row = $driver->next(-handle => $sth);
 	ok(!$row, 'Record test.');
 
 	$sth = $driver->open_table(-table => 'folks', -filter => "name >= 'Laura'");
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'Sterling', 'Record test.');
+	is($row->{name}, 'Sterling', 'Record test.');
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'Terri', 'Record test.');
+	is($row->{name}, 'Terri', 'Record test.');
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'Rhonda', 'Record test.');
+	is($row->{name}, 'Rhonda', 'Record test.');
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'Laura', 'Record test.');
+	is($row->{name}, 'Laura', 'Record test.');
 	$row = $driver->next(-handle => $sth);
 	ok(!$row, 'Record test.');
 
 	$sth = $driver->open_table(-table => 'folks', -filter => "name <> 'Laura'");
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'Sterling', 'Record test.');
+	is($row->{name}, 'Sterling', 'Record test.');
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'Terri', 'Record test.');
+	is($row->{name}, 'Terri', 'Record test.');
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'Gregg', 'Record test.');
+	is($row->{name}, 'Gregg', 'Record test.');
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'Rhonda', 'Record test.');
+	is($row->{name}, 'Rhonda', 'Record test.');
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'James', 'Record test.');
+	is($row->{name}, 'James', 'Record test.');
 	$row = $driver->next(-handle => $sth);
 	ok(!$row, 'Record test.');
 
 	$sth = $driver->open_table(-table => 'folks', -filter => "name = 'Laura'");
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'Laura', 'Record test.');
+	is($row->{name}, 'Laura', 'Record test.');
 	$row = $driver->next(-handle => $sth);
 	ok(!$row, 'Record test.');
 
 	$sth = $driver->open_table(-table => 'folks', -filter => "name LIKE '\%er\%'");
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'Sterling', 'Record test.');
+	is($row->{name}, 'Sterling', 'Record test.');
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'Terri', 'Record test.');
+	is($row->{name}, 'Terri', 'Record test.');
 	$row = $driver->next(-handle => $sth);
 	ok(!$row, 'Record test.');
 
 	$sth = $driver->open_table(-table => 'folks', -filter => "name NOT LIKE '\%er\%'");
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'Gregg', 'Record test.');
+	is($row->{name}, 'Gregg', 'Record test.');
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'Rhonda', 'Record test.');
+	is($row->{name}, 'Rhonda', 'Record test.');
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'James', 'Record test.');
+	is($row->{name}, 'James', 'Record test.');
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'Laura', 'Record test.');
+	is($row->{name}, 'Laura', 'Record test.');
 	$row = $driver->next(-handle => $sth);
 	ok(!$row, 'Record test.');
 
 	$sth = $driver->open_table(-table => 'folks', -filter => "name ILIKE '\%L_\%'");
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'Sterling', 'Record test.');
+	is($row->{name}, 'Sterling', 'Record test.');
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'Laura', 'Record test.');
+	is($row->{name}, 'Laura', 'Record test.');
 	$row = $driver->next(-handle => $sth);
 	ok(!$row, 'Record test.');
 
 	$sth = $driver->open_table(-table => 'folks', -filter => "name NOT ILIKE '\%L_\%'");
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'Terri', 'Record test.');
+	is($row->{name}, 'Terri', 'Record test.');
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'Gregg', 'Record test.');
+	is($row->{name}, 'Gregg', 'Record test.');
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'Rhonda', 'Record test.');
+	is($row->{name}, 'Rhonda', 'Record test.');
 	$row = $driver->next(-handle => $sth);
-	ok($row->{name} eq 'James', 'Record test.');
+	is($row->{name}, 'James', 'Record test.');
 	$row = $driver->next(-handle => $sth);
 	ok(!$row, 'Record test.');
 
 };
 
-if ($@) {
-	diag("Test error. Attempting cleanup: $@");
+if ($EVAL_ERROR) {
+	diag("Test error. Attempting cleanup: $EVAL_ERROR");
 }
 
-require 't/pgcleanup';
+drop_all($driver);

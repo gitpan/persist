@@ -71,11 +71,10 @@ Persist::Overview - An overview of the Persist Perl extension
 
 =head1 PREFACE
 
-This document is a work in progress and, as of this writing, is woefully
-incomplete. It should provide a relatively quick overview and pointers to where
-to look elsewhere in the documentation for help.  This document is meant to
-provide a good starting place for learning about Persist and geting started
-using it.
+This document is a work in progress and is woefully incomplete. It should
+provide a relatively quick overview and pointers to where to look elsewhere in
+the documentation for help.  This document is meant to provide a good starting
+place for learning about Persist and geting started using it.
 
 =head1 DESCRIPTION
 
@@ -83,7 +82,7 @@ Persist provides a portable API to access data stored in a database. This API
 seeks to make it possible to write components that are write-once/run-everywhere
 reusable across storage back-ends. Thus, a component can be written to run under
 PostgreSQL and then be used on MySQL or a CSV-based filesystem database without
-making any changes to the component code.
+making any changes to the component code. [NOTE: MySQL isn't supported yet.]
 
 The system maintains it's own system of drivers which provide a basic, low-level
 interface layer with the underlying storage system. These drivers implement a
@@ -316,7 +315,7 @@ debated) each other's work.
 Besides the I<Chronicles of Narnia>, C.S. Lewis also wrote another allegorical
 fictional work known as I<The Space Trilogy>. The three books in this trilogy
 are I<Out of the Silent Planet>, I<Perelandra>, and I<That Hideous Strength>.
-This books provide some of C.S. Lewis' imaginings about space travel, life on
+These books provide some of C.S. Lewis' imaginings about space travel, life on
 other planets (specifically Mars and Venus), and the goings on of the greater
 Universe--within which we humans are completely insignificant in some ways, but
 at the center in others.
@@ -327,8 +326,8 @@ condition as he understands it. He also examines the roots of humanity and what
 life might have been like around the time of the fall of man. There are a number
 of Christian spritual undertones, especially those involving what we Christians
 would refer to as "spiritual warfare." His sensationalized representation of
-angels and demons have obviously been followed closely by other Christian
-authors.
+angels (Eldil) and demons (Tellurian Eldil) have obviously been followed closely
+by other Christian authors.
 
 I recommend these books very highly. These books aren't for the faint of heart,
 especially since some themes might be a little frightening. They also take a

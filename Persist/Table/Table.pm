@@ -14,7 +14,7 @@ use Persist::Tabular;
 our @ISA = qw(Persist::Tabular);
 
 our $AUTOLOAD;
-our ( $VERSION ) = '$Revision: 1.12 $' =~ /\$Revision:\s+([^\s]+)/;
+our ( $VERSION ) = '$Revision: 1.13 $' =~ /\$Revision:\s+([^\s]+)/;
 
 =head1 NAME
 
@@ -58,23 +58,27 @@ information.
 
 =over
 
-=item $table = $source->table($table, $filter)
+=item $table = $source->table($table [, $filter, \@order, $offset, $limit ])
 
 The alternative to the C<table> constructor is to use the table's name as
 the constructor name directly. As in:
 
-  $table = $source->folks($filter);
+  $table = $source->folks($filter, [ 'name' ], 75, 25);
 
 See L<Persist::Source> for details.
 
 =cut
 
 sub new {
-	my ($class, $driver, $table, $filter) = @_;
+	my ($class, $driver, $table,
+		$filter, $order, $offset, $limit) = @_;
 
 	my $self = $class->SUPER::new($driver);
-	$self->{-table} = $table;
+	$self->{-table}  = $table;
 	$self->{-filter} = $filter;
+	$self->{-order}  = $order;
+	$self->{-offset} = $offset;
+	$self->{-limit}  = $limit;
 	
 	for my $key ($driver->indexes(-table => $table)) {
 		if ($key->[0] == PRIMARY) {
@@ -103,9 +107,13 @@ sub table_name {
 #
 sub _open {
 	my ($self, $reset) = @_;
-	$self->{-handle} = $self->{-driver}->open_table
-			(-table => $self->{-table}, -filter => $self->{-filter})
-			if $reset or not $self->{-handle};
+	$self->{-handle} = $self->{-driver}->open_table(
+		-table  => $self->{-table},
+		-filter => $self->{-filter},
+		-order  => $self->{-order},
+		-offset => $self->{-offset},
+		-limit  => $self->{-limit},
+	) if $reset or not $self->{-handle};
 }
 
 # =item $self-E<gt>_sync($reset)
