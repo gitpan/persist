@@ -1,3 +1,28 @@
+2003-09-24 09:10  hanenkamp
+
+	* Persist/: Join/Join.pm, Join/t/bytable.t, Tabular/Tabular.pm,
+	Test/Test.pm: Added support for bytable to Join and fixed Test.
+
+2003-09-24 09:09  hanenkamp
+
+	* Persist/: Source/t/source.t, Join/t/explicit_join.t,
+	Join/t/join.t, Table/t/table.t: Fixed tests so that they work using
+	the new testing system.
+
+2003-09-24 09:05  hanenkamp
+
+	* Persist/Driver/DBI/: DBI.pm, PostgreSQL/PostgreSQL.pm: Fixed
+	bytable bugs in DBI and PostgreSQL and an array bounds-checking bug
+	in PostgreSQL.
+
+2003-09-22 10:44  hanenkamp
+
+	* MANIFEST: Fixed bug in MANIFEST.
+
+2003-09-22 10:43  hanenkamp
+
+	* ChangeLog: Updated the ChangeLog in CVS.
+
 2003-09-22 10:42  hanenkamp
 
 	* Bugs, ToDo: Updating documentation for release.

@@ -4,12 +4,14 @@ use 5.008;
 use strict;
 use warnings;
 
+use Getargs::Mixed;
+
+use Persist ':driver_help';
 use Persist::Tabular;
 
 our @ISA = qw(Persist::Tabular);
 
-our $AUTOLOAD;
-our ( $VERSION ) = '$Revision: 1.7 $' =~ /\$Revision:\s+([^\s]+)/;
+our ( $VERSION ) = '$Revision: 1.8 $' =~ /\$Revision:\s+([^\s]+)/;
 
 =head1 NAME
 
@@ -62,6 +64,23 @@ sub new {
 	$self->{-offset} = $offset;
 	$self->{-limit}  = $limit;
 
+	my %names;
+	my %seen;
+	for my $i (0 .. $#$tables) {
+		my $name = $tables->[$i];
+		my $num  = ++$seen{$name};
+
+		if ($num > 1) {
+			$names{$name} = -1; # ambiguous
+		} else {
+			$names{$name} = $i;
+		}
+
+		$names{$i + 1}      = $i;
+		$names{"$name$num"} = $i;
+	}
+	$self->{names}   = \%names;
+
 	$self;
 }
 
@@ -81,6 +100,85 @@ sub _open {
 			-offset		=> $self->{-offset},
 			-limit		=> $self->{-limit},
 		);
+	}
+}
+
+=item $row = $join-E<gt>table($table)
+
+When C<first> or C<next> have been passed the C<$bytable> option set to true,
+you must use this method to retrieve data from each table. Essentially, the
+current row is packed with data from multiple tables instead of retrieving the
+joined information as if it were combined into a single table.
+
+The C<$table> argument may be any valid table identifier that could be used in a
+table. That is, given a join on tables C<['A', 'B', 'A']>, you could pass a
+value of C<1> to retrieve data for the first "A" table, C<2> to retrieve data
+for the "B" table, or C<3> to retrieve data for the second "A" table. You could
+pass "B" to retrieve data for the "B" table. Finally, you could pass "A1", "B1",
+and "A2" to access each of these tables, respectively. Using an a name that
+is ambiguous (like "A" in this example) will result in an error.
+
+=cut
+
+package Persist::Join::Table;
+
+use Getargs::Mixed;
+
+sub new {
+	my ($class, $data) = @_;
+	return bless { -data => $data }, $class;
+}
+
+sub value {
+	my ($self, %args) = parameters('self', [qw(column)], @_);
+	my $key = $args{column};
+
+	return $self->{-data}{$key};
+}
+
+our $AUTOLOAD;
+sub AUTOLOAD {
+	my ($self) = @_;
+
+	my ($key) = $AUTOLOAD =~ /::([^:]+)$/;
+	$self->value($key);
+}
+
+package Persist::Join;
+
+sub table {
+	my ($self, %args) = parameters('self', [qw(table)], @_);
+	my $i = $self->{names}{$args{table}};
+	
+	croak "Attempting to retrieve data by table when the bytable option was not given."
+		if ref $self->{-data} ne 'ARRAY';
+	
+	croak "Unknown table name $args{table} given." unless defined $i;
+	croak "Ambiguous table name $args{table} given." if $i == -1;
+
+	Persist::Join::Table->new($self->{-data}[$i]);
+}
+
+=item $tabular-E<gt>I<E<lt>tableE<gt>>
+
+Shortcut for of C<table> that returns the data found in the given table.  This
+is only available when the C<$bytable> option was passed to the last call to
+C<first> or C<next>. Otherwise, it is assumed that this is a column name rather
+than a table.
+
+See L<I<E<lt>columnE<gt>>|Persist::Tabular>.
+
+=cut
+
+our $AUTOLOAD;
+sub AUTOLOAD {
+	my ($self) = @_;
+
+	my ($key) = $AUTOLOAD =~ /::([^:]+)$/;
+	if (ref $self->{-data} eq 'ARRAY') {
+		return $self->table($key);
+	} else {
+		return $self->value($key);
 	}
 }
 

@@ -21,47 +21,32 @@ required.
 
 The new Persist::Overview document is a good place to start.
 
-RELEASE NOTES for 0.5.2
+RELEASE NOTES for 0.5.3
 
-Unfortunately, I have had to make an API change within a minor version because
-I haven't made enough other changes to warrant a full minor version. This change
-doesn't modify much existing functionality, it has simply removed all of the
-methods for handling explicit joins. Explicit joins are now handled by the 
-normal join methods using a new "-on" option. I regret having to make a change
-like this, but it should have been done for the 0.5.0/0.5.1 release.
+This is a bug fix release. The changes are extremely important as the testing
+system was broke during the last release. (I forgot to completely remove the
+previous version, so 0.5.2 was still using an obsolete 0.5.1 file for testing,
+which a typically user isn't likely to have.) The problem is now fixed and the
+testing system should run again.
 
-In addition, new options have been added when accessing tables and joins for
-ordering columns and setting an offset and limit on the rows returned. This
-change is supported by both drivers.
+The other change is that I added support for the $bytable option to the next
+and first methods of Persist::Join. This should have been added in 0.5.2, but
+it slipped my mind.
 
-The testing and build system has been revamped, again. This may change the
-installation procedure a bit for some. (See below for details.) The new testing
-system uses a single batch of tests that are run for each configured driver.
-This way, regression tests can be designed once and then applied to all drivers.
-This should result in better standards checking and has already resulted in a
-few bugs being found.
-
-This has the pleasant side-effect of providing a new API that Persist users may
-use to test their own code against every configured Persist driver. Thus, a user
-may write code for Persist and ask the testing system of Persist to run their
-tests over all configured test sources. Any differences that may exist between
-the various drivers can then be tested to make sure your code will work under
-a diversity of environments.
+The new testing system has been revised slightly and is now known to run since
+it is used to test the front-end of Persist.
 
 These changes and others have been made to begin paving the way for the
-inclusion of a MySQL driver, which I hope to make part of the 0.5.3 release.
+inclusion of a MySQL driver, which I hope to make part of the 0.5.4 release.
 
-The API of this library is mostly stabilized. Dropping explicit_join was an
-unfortunate, but necessary evil, but, at this point, I see no reason why any
-other part of the API should be dropped in the future.
+The API of this library is mostly stabilized. I see the 0.5.x series to be a
+chance to expand the horizons of what Persist is able to do. With the new
+parameter passing syntax, it should be easier to add new features to the system
+without changing anything that has passed. This series will probably see the
+addition of a lot of new usability features. I also hope to include one and
+maybe two new back-end drivers.
 
-I see the 0.5.x series to be a chance to expand the horizons of what Persist is
-able to do. With the new parameter passing syntax, it should be easier to add
-new features to the system without changing anything that has passed. This
-series will probably see the addition of a lot of new usability features. I also
-hope to include one and maybe two new back-end drivers.
-
-STORAGE SYSTEM DRIVERS of 0.5.2
+STORAGE SYSTEM DRIVERS of 0.5.3
 
 There are only two back-ends and one abstract support driver. The memory
 back-end is fully functional and supports "transient persistence." Each memory

@@ -1,17 +1,12 @@
 # vim: set ft=perl :
 
 use Test::More;
-
-use lib "$ENV{PWD}";
-require "testsetup";
-
+use Persist::Test qw(@folks @favorites @folks_data next_source count_sources);
 use Persist::Join;
 
-@sources = &all_sources();
-plan tests => scalar(@sources) * 8;
+plan tests => 8 * count_sources;
 
-for $src (@sources) {
-
+while (my ($name, $src) = next_source) {
 	eval {
 
 		$src->new_table(@folks);
@@ -46,20 +41,9 @@ for $src (@sources) {
 		is($join->name, 'Rhonda', 'Rhonda is over 40.');
 		ok(!$join->next, 'No more records.');
 
-	}; if ($@) {
-		diag("Error in tests. Attempting cleanup: $@");
+	};
+	
+	if ($@) {
+		diag("Error in tests [$name]: $@");
 	}
-
-	eval {
-		$src->delete_table('favorites');
-	}; if ($@) {
-		diag("Could not clean up favorites table: $@");
-	}
-
-	eval {
-		$src->delete_table('folks');
-	}; if ($@) {
-		diag("Could not clean up folks table: $@");
-	}
-
 }

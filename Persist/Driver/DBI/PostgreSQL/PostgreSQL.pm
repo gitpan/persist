@@ -15,7 +15,7 @@ use Persist::Filter;
 
 our @ISA = qw(Persist::Driver::DBI);
 
-our ( $VERSION ) = '$Revision: 1.19 $' =~ /\$Revision:\s+([^\s]+)/;
+our ( $VERSION ) = '$Revision: 1.20 $' =~ /\$Revision:\s+([^\s]+)/;
 
 use constant TYPES => [ 
 	qw( varchar int4 serial bool float8 timestamp )
@@ -275,7 +275,7 @@ sub first {
 	my ($handle, $bytable) = @args{qw(-handle -bytable)};
 	my $tables = $handle->[0];
 
-	my $results = $self->SUPER::first(-handle => $handle);
+	my $results = $self->SUPER::first(-handle => $handle, -bytable => $bytable);
 
 	if (defined $results) {
 		if ($bytable and @$tables > 1) {

@@ -10,7 +10,7 @@ use Persist::Filter;
 
 our @ISA = qw(Persist::Driver);
 
-our ( $VERSION ) = '$Revision: 1.14 $' =~ /\$Revision:\s+([^\s]+)/;
+our ( $VERSION ) = '$Revision: 1.15 $' =~ /\$Revision:\s+([^\s]+)/;
 
 =head1 NAME
 
@@ -497,15 +497,19 @@ sub first {
 		$sth->execute;
 
 		my $row = $sth->fetchrow_arrayref;
-		my $table_columns = $handle->[2];
-		my @data;
-		for my $i (0 .. @$table_columns) {
-			my %hash;
-			@hash{@{$$table_columns[$i][0]}} = @$row[$$table_columns[$i][1][0] .. $$table_columns[$i][1][1]];
-			push @data, \%hash;
-		}
+		if (defined $row) {
+			my $table_columns = $handle->[2];
+			my @data;
+			for my $i (0 .. $#$table_columns) {
+				my %hash;
+				@hash{@{$$table_columns[$i][0]}} = @$row[$$table_columns[$i][1][0] .. $$table_columns[$i][1][1]];
+				push @data, \%hash;
+			}
 
-		return \@data;
+			return \@data;
+		} else {
+			return undef;
+		}
 	} else {
 		my $sth = $handle->[1];
 		$sth->finish;
@@ -528,16 +532,20 @@ sub next {
 		my $sth = $handle->[1];
 
 		my $row = $sth->fetchrow_arrayref;
-		my $table_columns = $handle->[2];
-		my @data;
-		my %hash;
-		for my $i (0 .. $#$table_columns) {
+		if (defined $row) {
+			my $table_columns = $handle->[2];
+			my @data;
 			my %hash;
-			@hash{@{$$table_columns[$i][0]}} = @$row[$$table_columns[$i][1][0] .. $$table_columns[$i][1][1]];
-			push @data, \%hash;
-		}
+			for my $i (0 .. $#$table_columns) {
+				my %hash;
+				@hash{@{$$table_columns[$i][0]}} = @$row[$$table_columns[$i][1][0] .. $$table_columns[$i][1][1]];
+				push @data, \%hash;
+			}
 
-		return \@data;
+			return \@data;
+		} else {
+			return undef;
+		}
 	} else {
 		my $sth = $handle->[1];
 		$sth->fetchrow_hashref;

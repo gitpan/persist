@@ -9,7 +9,7 @@ use Carp;
 use Getargs::Mixed;
 
 our $AUTOLOAD;
-our ( $VERSION ) = '$Revision: 1.10 $' =~ /\$Revision:\s+([^\s]+)/;
+our ( $VERSION ) = '$Revision: 1.11 $' =~ /\$Revision:\s+([^\s]+)/;
 
 =head1 NAME
 
@@ -211,7 +211,7 @@ sub value {
 
 =item $tabular-E<gt>I<E<lt>columnE<gt>>
 
-Shortcut for of C<value> that reads the data found in the given column.
+Shortcut for of C<value> that returns the data found in the given column.
 
 =cut
 

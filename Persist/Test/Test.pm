@@ -8,14 +8,12 @@ use Carp;
 use File::Spec;
 use Test::Harness;
 
-use Getargs::Mixed;
-
 require Exporter;
 
 use Persist ':constants';
 use Persist::Test::Config;
 
-our @EXPORT = qw( %sources );
+our @EXPORT = qw( next_source count_sources );
 
 our %EXPORT_TAGS = (
 	driver => [ qw( 
@@ -27,7 +25,7 @@ our %EXPORT_TAGS = (
 our @EXPORT_OK = @{$EXPORT_TAGS{driver}};
 
 our @ISA = qw( Exporter );
-our ($VERSION) = '$Revision: 1.1 $' =~ /\$Revision:\s(\S+)/;
+our ($VERSION) = '$Revision: 1.2 $' =~ /\$Revision:\s(\S+)/;
 
 =head1 NAME
 
@@ -35,9 +33,12 @@ Persist::Test - Persist helper for testing drivers
 
 =head1 SYNOPSIS
 
+  use Test::More;
   use Persist::Test;
 
-  while (my ($name, $source) = each %source) {
+  plane tests => count_sources;
+
+  while (my ($name, $source) = next_source) {
 	  # create your tables and run your code
 	  # don't bother cleaning up, this will be done for you
   }
@@ -80,19 +81,26 @@ test framework.
 
 package Persist::Test::Source;
 
+use Getargs::Mixed;
+
+use Persist::Source;
+
 # This is a wrapper around a real source. All operations are passed on as-is,
 # but we watch the new_source, new_table, delete_source, and delete_table to
 # keep track of the stuff they add. Then, when it comes time to be DESTROYed, we
 # tell the source to wax anything they've left.
 my $init = sub {
 	my $self = shift;
+
+	Carp::confess if $self eq 'self';
+
 	my ($package, @options) = @{$$self{-options}};
 	unless (defined $$self{-source}) {
 		eval "package Persist::Test::_safe; use $package";
 		if ($@) {
 			die "Could not load $package: $@";
 		}
-		$$self{-source} = $package->new(@options);
+		$$self{-source} = Persist::Source->new($package, @options);
 	}
 };
 
@@ -128,6 +136,7 @@ sub delete_table {
 our $AUTOLOAD;
 sub AUTOLOAD {
 	my ($self, @args) = @_;
+
 	&$init($self);
 	my ($sub) = $AUTOLOAD =~ /([^:]+)$/;
 	no strict 'subs';
@@ -136,8 +145,11 @@ sub AUTOLOAD {
 
 sub DESTROY {
 	my $self = shift;
-	for (keys %{$$self{-tables}}) {
-		$$self{-source}->delete_table($_);
+
+	if (defined $$self{-tables}) {
+		for (keys %{$$self{-tables}}) {
+			$$self{-source}->delete_table($_);
+		}
 	}
 }
 
@@ -181,6 +193,24 @@ our @folks_data = (
 our %sources;
 while (my ($name, $options) = each %options) {
 	$sources{$name} = Persist::Test::Source->new(@$options);
+}
+
+# This voodoo was created to prevent odd errors from occuring during global
+# destruction since garbage collection appears to occur in an arbitrary order.
+# This should cause the references to vanish when our testers are finished with
+# them rather than waiting for global destruction.
+sub next_source {
+	if (keys %sources) {
+		my ($name) = keys %sources;
+		my ($source) = delete $sources{$name};
+		return ($name, $source);
+	} else {
+		return ();
+	}
+}
+
+sub count_sources {
+	return scalar(keys(%sources));
 }
 
 sub init {

@@ -28,7 +28,7 @@ our @EXPORT_OK = (
 	@{ $EXPORT_TAGS{'driver_help'} },
 );
 
-our $VERSION = '0.5.2';
+our $VERSION = '0.5.3';
 
 =head1 NAME
 

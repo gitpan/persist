@@ -22,28 +22,26 @@ while (my ($name, $src) = next_source) {
 			}
 		}
 
-		ok(our $join = $src->join(
-					-tables => [ 'folks', 'favorites' ],
-					-on     => 'folks.fid = favorites.fid',
-					-filter => "color = 'green'"), 'Join.');
+		ok(our $join = $src->join([ 'folks', 'favorites' ], 
+								  -filter => "color = 'green'"), 'Join.');
 
-		$join->next;
-		is($join->name, 'Sterling', 'Sterling likes green.');
-		$join->next;
-		is($join->name, 'Terri', 'Terri likes green.');
+		$join->next(1);
+		is($join->folks->name, 'Sterling', 'Sterling likes green.');
+		$join->next(1);
+		is($join->folks1->name, 'Terri', 'Terri likes green.');
 		ok(!$join->next, 'No more records.');
 
-		$join->first;
-		is($join->name, 'Sterling', 'Sterling likes green again.');
+		$join->first(1);
+		is($join->table(1)->name, 'Sterling', 'Sterling likes green again.');
 
 		$join->filter('age > 40');
-		$join->next;
-		is($join->name, 'Gregg', 'Gregg is over 40.');
-		$join->next;
-		is($join->name, 'Rhonda', 'Rhonda is over 40.');
-		ok(!$join->next, 'No more records.');
+		$join->next(1);
+		is($join->table("folks")->name, 'Gregg', 'Gregg is over 40.');
+		$join->next(1);
+		is($join->table("folks1")->name, 'Rhonda', 'Rhonda is over 40.');
+		ok(!$join->next(1), 'No more records.');
 
-	}; 
+	};
 	
 	if ($@) {
 		diag("Error in tests [$name]: $@");

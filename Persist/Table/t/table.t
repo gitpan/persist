@@ -1,16 +1,13 @@
 # vim: set ft=perl :
 
 use Test::More;
-
+use Persist::Test qw(@folks @folks_data next_source count_sources);
 use Persist qw( :constants );
 use Persist::Table;
 
-require "testsetup";
+plan tests => 24 * count_sources;
 
-our @sources = &all_sources();
-plan tests => scalar(@sources) * 24;
-for $src (@sources) {
-
+while (my ($name, $src) = next_source) {
 	eval {
 
 		$src->new_table(@folks);
@@ -54,14 +51,9 @@ for $src (@sources) {
 		is($table->name, 'Bob', 'Bob changed his mind and did not want to be Carl.');
 		ok(!$table->next, 'No more records.');
 
-	}; if ($@) {
-		diag("Error testing. Attempting cleanup: $@");
+	}; 
+	
+	if ($@) {
+		diag("Error testing [$name]: $@");
 	}
-
-	eval {
-		$src->delete_table('folks');
-	}; if ($@) {
-		diag("Error cleaning folks: $@");
-	}
-
 }

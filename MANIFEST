@@ -23,6 +23,7 @@ Persist/Filter/t/parse_format.t
 Persist/Filter/t/walk.t
 Persist/Join/Join.pm
 Persist/Join/Makefile.PL
+Persist/Join/t/bytable.t
 Persist/Join/t/explicit_join.t
 Persist/Join/t/join.t
 Persist/Makefile.PL

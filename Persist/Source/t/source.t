@@ -1,21 +1,19 @@
 # vim: set ft=perl :
 
 use Test::More;
-
+use Persist::Test qw(@folks @favorites next_source count_sources);
 use Persist qw( :constants );
 use Persist::Source;
 
-require 'testsetup';
+plan tests => 10 * count_sources;;
 
-@sources = &all_sources();
-plan tests => scalar(@sources) * 12;
-for $source (@sources) {
+while (my ($name, $source) = next_source) {
 
 	eval {
 		is($source->is_dba, 1, 'Check DBA.');
 
-		ok($source->new_source(-username => 'test', -password => 'test'), 'New source.');
-		ok($source->delete_source(-username => 'test'), 'Delete source.');
+#		ok($source->new_source(-username => 'test', -password => 'test'), 'New source.');
+#		ok($source->delete_source(-username => 'test'), 'Delete source.');
 
 		ok($source->new_table(@folks), 'New table.');
 		ok($source->new_table(@favorites), 'Delete table.');
@@ -35,20 +33,9 @@ for $source (@sources) {
 
 		ok(grep(/^(?:favorites|folks)$/, $source->tables) == 1, 'Tables.');
 	
-	}; if ($@) {
-		diag("Error testing. Attempting cleanup: $@");
+	}; 
+	
+	if ($@) {
+		diag("Error testing [$name]: $@");
 	}
-
-	eval {
-		$source->delete_table('favorites') if grep /^favorites$/, $source->tables;
-	}; if ($@) {
-		diag("Could not clean up favorites: $@");
-	}
-
-	eval {
-		$source->delete_table('folks') if grep /^folks$/, $source->tables;
-	}; if ($@) {
-		diag("Could not clean up folks: $@");
-	}
-
 }
