@@ -7,7 +7,7 @@ use warnings;
 use Carp;
 
 our $AUTOLOAD;
-our ( $VERSION ) = '$Revision: 1.4 $' =~ /\$Revision:\s+([^\s]+)/;
+our ( $VERSION ) = '$Revision: 1.5 $' =~ /\$Revision:\s+([^\s]+)/;
 
 =head1 NAME
 
@@ -103,6 +103,8 @@ sub next {
 Changes the filter or filters used to filter the data set and resets the
 driver handle. Either C<first> or C<next> must be called to access the data
 after this call is made.
+
+For information on the format of filters see L<Persist::Filter>.
 
 =cut
 

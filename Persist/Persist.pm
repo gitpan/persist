@@ -14,12 +14,20 @@ require Exporter;
 
 our @ISA = qw(Exporter);
 
-our %EXPORT_TAGS = ( 'constants' => [ qw(
-	VARCHAR INTEGER AUTONUMBER BOOLEAN REAL TIMESTAMP
-	PRIMARY UNIQUE LINK
-) ] );
+our %EXPORT_TAGS = ( 
+	'constants' => [ qw(
+		VARCHAR INTEGER AUTONUMBER BOOLEAN REAL TIMESTAMP
+		PRIMARY UNIQUE LINK
+	) ],
+	'driver_help' => [ qw(
+		croak carp
+	) ],
+);
 
-our @EXPORT_OK = ( @{ $EXPORT_TAGS{'constants'} } );
+our @EXPORT_OK = ( 
+	@{ $EXPORT_TAGS{'constants'} },
+	@{ $EXPORT_TAGS{'driver_help'} },
+);
 
 # Setup version information. The only time this is really important is for a
 # release. When a release occurs it will be tagged so we can take the version
@@ -28,14 +36,14 @@ our @EXPORT_OK = ( @{ $EXPORT_TAGS{'constants'} } );
 #
 # This is used by ../Makefile.PL for version information for the entire
 # package and for the PPD.
-our $VERSION_TAG = '$Name: persist-0_3_2 $';
-our $VERSION_REV = '$Revision: 1.10 $';
+our $VERSION_TAG = '$Name: persist-0_3_3 $';
+our $VERSION_REV = '$Revision: 1.11 $';
 our $VERSION;
 
 if ($VERSION_TAG =~ /\$Name:\s+persist-(\d+)_(\d+)_(\d+)(\S*)/i) {
 	$VERSION = "$1.$2.$3$4";
 } else {
-	( $VERSION ) = '$Revision: 1.10 $' =~ /\$Revision:\s+(\S+)/;
+	( $VERSION ) = '$Revision: 1.11 $' =~ /\$Revision:\s+(\S+)/;
 	$VERSION .= '-nr';
 }
 
@@ -359,6 +367,59 @@ sub normalize_timestamp {
 	}
 
 	sprintf '%s%02d%02d%02d%02d%02d%02d%02d+0000', @times;
+}
+
+=back
+
+=head2 DRIVER HELPERS
+
+This section is only of interest to driver implementors. The following helper
+routines have been written to help with driver implementation. They may be
+imported each by name or both by C<':driver_help'>.
+
+These were added because the C<croak> and C<carp> methods provided by the
+L<Carp> package are a little week for our needs. The L<Carp> methods will note
+errors in the first caller outside of the current package in the call-stack (I
+think). These, will note errors in the first caller outside of Persist
+packages.
+
+The important difference is that a driver error will be reported in user code
+rather in the Persist package using the driver. A great aid to debugging.
+
+=over
+
+=item croak @msg
+
+This method dies with a message and notes the package and line of the first
+caller outside of the Persist framework.
+
+=cut
+
+sub croak(@) {
+	my ($i, $package, $filename, $line);
+	$i = 1;
+	do {
+		($package, $filename, $line) = caller $i++;
+	} until ($package !~ /^Persist/);
+
+	die @_," in $filename on line $line.\n";
+}
+
+=item carp @msg
+
+This method warns with a message and notes the package and line of the first
+caller outside of the Persist framework.
+
+=cut
+
+sub carp(@) {
+	my ($i, $package, $filename, $line);
+	$i = 1;
+	do {
+		($package, $filename, $line) = caller $i++;
+	} until ($package !~ /^Persist/);
+
+	warn @_," in $filename on line $line.\n";
 }
 
 =back

@@ -3,9 +3,17 @@
 2. [./Persist/Driver/Memory/Memory.pm] Because of the nature of the way it
    is represented in string format, values of type TIMESTAMP may not always
    be sorted correctly--specifically dates in the BC epoch.
-3. [./Persist/Driver/Memory/Memory.pm] In closures generated to filter/join
-   tables, we need to add define tests or set 'no warnings' to turn off
-   'xxx used with undefined' warnings.
-4. [./Persist/Driver/DBI/DBI.pm] Throughout this code all tables and field
+3. [./Persist/Driver/DBI/DBI.pm] Throughout this code all tables and field
    names should be double quoted to make sure names are compatible
+   everywhere.
+4. [./blib/lib/Persist/Source.pm] An exception should occur in table when
+   the given table doesn't exist.
+5. [./blib/lib/Persist/Driver/Memory.pm] Because of the nature of the way
+   it is represented in string format, values of type TIMESTAMP may not
+   always be sorted correctly--specifically dates in the BC epoch.
+6. [./blib/lib/Persist/Driver/Memory.pm] In closures generated to
+   filter/join tables, we need to add define tests or set 'no warnings' to
+   turn off 'xxx used with undefined' warnings.
+7. [./blib/lib/Persist/Driver/DBI.pm] Throughout this code all tables and
+   field names should be double quoted to make sure names are compatible
    everywhere.

@@ -4,16 +4,15 @@ use 5.8.0;
 use strict;
 use warnings;
 
-use Carp;
 use DBI;
 
-use Persist qw(:constants);
+use Persist qw(:constants :driver_help);
 use Persist::Driver::DBI;
 use Persist::Filter;
 
 our @ISA = qw(Persist::Driver::DBI);
 
-our ( $VERSION ) = '$Revision: 1.11 $' =~ /\$Revision:\s+([^\s]+)/;
+our ( $VERSION ) = '$Revision: 1.13 $' =~ /\$Revision:\s+([^\s]+)/;
 
 use constant TYPES => [ 
 	qw( varchar int4 serial bool float8 timestamptz )
@@ -287,8 +286,7 @@ converts PostgreSQL style dates to L<Persist> style timestamps.
 
 =cut
 
-# TODO Use common conversion methods to convert to/from PostgreSQL/Persist
-# versions of strings.
+# TODO Combine common code in first and next.
 
 sub next {
 	my ($self, $handle) = @_;

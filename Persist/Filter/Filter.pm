@@ -229,7 +229,7 @@ our @EXPORT = qw(
 	parse_filter unparse_filter
 );
 
-our ($VERSION) = '$Revision: 1.5 $' =~ /\$Revision:\s+(\S+)/;
+our ($VERSION) = '$Revision: 1.6 $' =~ /\$Revision:\s+(\S+)/;
 
 =head2 AST CLASS HEIRARCHY
 
@@ -248,8 +248,6 @@ class isn't used directly. It provides three methods for every AST object.
 =cut
 
 package Persist::Filter::AST;
-
-# TODO Add documentation for Persist::Filter::AST stuff.
 
 # =item $ast = Persist::Filter::AST->new(@args)
 #

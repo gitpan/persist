@@ -4,15 +4,31 @@
    table or column names.
 2. [./Persist/Table/Table.pm] When calling save add checking to make sure
    such a call is legal.
-3. [./Persist/Filter/Filter.pm] Add documentation for Persist::Filter::AST
-   stuff.
-4. [./Persist/Driver/Driver.pm] We need an API to allow for the discovery
+3. [./Persist/Driver/Driver.pm] We need an API to allow for the discovery
    of what parameters are necessary for creating/deleting/connecting to
    sources. Perhaps something similar to a table definition to take
    advantage of our metadata system.
-5. [./Persist/Driver/Driver.pm] Design a way for update to perform a
+4. [./Persist/Driver/Driver.pm] Design a way for update to perform a
    filtered update. That is, it would be nifty to do something like
    update('table', value => sub { $_ + 1 }) or something similar that could
    be used by the back-end in the most appropriate way.
-6. [./Persist/Driver/DBI/PostgreSQL/PostgreSQL.pm] Use common conversion
-   methods to convert to/from PostgreSQL/Persist versions of strings.
+5. [./Persist/Driver/DBI/PostgreSQL/PostgreSQL.pm] Combine common code in
+   first and next.
+6. [./blib/lib/Persist.pm] For this documentation (or somewhere) list those
+   keywords that should be avoided because they are a part of ANSI SQL or a
+   specific driver's implementation--that is, they shouldn't be used for
+   table or column names.
+7. [./blib/lib/Persist/Table.pm] When calling save add checking to make
+   sure such a call is legal.
+8. [./blib/lib/Persist/Driver.pm] We need an API to allow for the discovery
+   of what parameters are necessary for creating/deleting/connecting to
+   sources. Perhaps something similar to a table definition to take
+   advantage of our metadata system.
+9. [./blib/lib/Persist/Driver.pm] Design a way for update to perform a
+   filtered update. That is, it would be nifty to do something like
+   update('table', value => sub { $_ + 1 }) or something similar that could
+   be used by the back-end in the most appropriate way.
+10. [./blib/lib/Persist/Filter.pm] Add documentation for
+    Persist::Filter::AST stuff.
+11. [./blib/lib/Persist/Driver/DBI/PostgreSQL.pm] Use common conversion
+    methods to convert to/from PostgreSQL/Persist versions of strings.

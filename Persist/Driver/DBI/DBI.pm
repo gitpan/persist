@@ -3,15 +3,14 @@ package Persist::Driver::DBI;
 use 5.8.0;
 use strict;
 use warnings;
-use Carp;
 
-use Persist qw(:constants);
+use Persist qw(:constants :driver_help);
 use Persist::Driver;
 use Persist::Filter;
 
 our @ISA = qw(Persist::Driver);
 
-our ( $VERSION ) = '$Revision: 1.7 $' =~ /\$Revision:\s+([^\s]+)/;
+our ( $VERSION ) = '$Revision: 1.8 $' =~ /\$Revision:\s+([^\s]+)/;
 
 =head1 NAME
 

@@ -1,24 +1,6 @@
 use 5.8.0;
 use ExtUtils::MakeMaker;
 
-# Setup version information. The only time this is really important is for a
-# release. When a release occurs it will be tagged so we can take the version
-# from the tag. Otherwise, we just use the CVS revision which isn't really the
-# version, but let's us create distributions anyway.
-#
-# This is used by ../Makefile.PL for version information for the entire
-# package and for the PPD.
-our $VERSION_TAG = '$Name: persist-0_3_2 $';
-our $VERSION_REV = '$Revision: 1.7 $';
-our $VERSION;
-
-if ($VERSION_TAG =~ /\$Name:\s+persist-(\d+)_(\d+)_(\d+)(\S*)/i) {
-	$VERSION = "$1.$2.$3$4";
-} else {
-	( $VERSION ) = '$Revision: 1.7 $' =~ /\$Revision:\s+(\S+)/;
-	$VERSION .= '-nr';
-}
-
 # Take out our custom configuration directives to keep MakeMaker from whining
 # (and so we can use them).
 my %VARS;
@@ -38,7 +20,13 @@ for ($i = $#ARGV; $i >= 0; --$i) {
 
 WriteMakefile(
     NAME			=> 'persist',
-	VERSION			=> $VERSION,
+	VERSION			=> '0.3.3',
+	PREREQ_PM		=> {
+		'DBI'				=> '0',
+		'Date::Calc'		=> '0',
+		($PGTESTCONN ? ('DBD::Pg' => '0') : ()), # require it when they use it
+		'Parse::RecDescent'	=> '1.80',
+	},
 	ABSTRACT        => 'Data persistence library allowing for a write-once/run-anywhere approach.',
 );
 

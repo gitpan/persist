@@ -4,21 +4,16 @@ use 5.008;
 use strict;
 use warnings;
 
-use Carp;
-
-use Persist qw(:constants);
+use Persist qw(:constants :driver_help);
 use Persist::Filter;
 use Persist::Driver;
 
-our ( $VERSION ) = '$Revision: 1.7 $' =~ /\$Revision:\s+(\S+)/;
+our ( $VERSION ) = '$Revision: 1.11 $' =~ /\$Revision:\s+(\S+)/;
 our @ISA = qw( Persist::Driver );
 
 # FIXME Because of the nature of the way it is represented in string format,
 # values of type TIMESTAMP may not always be sorted correctly--specifically
 # dates in the BC epoch.
-
-# FIXME In closures generated to filter/join tables, we need to add define
-# tests or set 'no warnings' to turn off 'xxx used with undefined' warnings.
 
 =head1 NAME
 
@@ -195,7 +190,7 @@ sub _rewrite_filter {
 
 #debug#	print STDERR $filter,"\n";
 	my $ast = parse_filter($filter);
-	confess unless defined $ast;
+	
 	$ast->remap_on('Persist::Filter::Comparison', sub {
 		(my $a, local $_, my $b) = @{$_[0]};
 
@@ -262,7 +257,7 @@ sub _filter_closure {
 
 	my $closure;
 	if ($filter) {
-		$closure = "sub { ";
+		$closure = "sub { no warnings; ";
 		for (1 .. $num) { $closure .= "my \$t$_ = shift; " }
 		$closure .= $filter;
 		$closure .= " }";
@@ -310,7 +305,7 @@ sub open_join {
 		$number{$name} = ++$i;
 	}
 
-	my $join_closure_sub = "sub { ";
+	my $join_closure_sub = "sub { no warnings; ";
 	for $i (1 .. scalar(@$tables)) { 
 		$join_closure_sub .= "my \$t$i = shift; " 
 	}
@@ -357,7 +352,7 @@ sub open_explicit_join {
 	my $filt_clos = _filter_closure(scalar(@$tables)/2,
 			$self->_rewrite_columns($tables, $filter, 1));
 
-	my $join_closure_sub = "sub { ";
+	my $join_closure_sub = "sub { no warnings; ";
 	my (@tables, %aliases);
 	for my $i (0 .. $#$tables) {
 		push @tables, $tables->[$i] if $i % 2;
@@ -515,6 +510,14 @@ sub _join {
 		my $i = COUNTER;
 		for my $table (@{$handle->[TABLE]}) {
 			my $name = ref $table ? $table->[0] : $table;
+
+			if (not defined $self->{-data}{$name} or @{$self->{-data}{$name}} == 0) {
+				# if any table has no data, no records can be returned, we're
+				# done. Let's keep it that way too.
+				$handle->[COUNTER] = -1;
+				return undef;
+			}
+			
 			push @data, $self->{-data}{$name}[$handle->[$i]];
 			$i++;
 		}

@@ -1,3 +1,44 @@
+2003-08-08 08:47  hanenkamp
+
+	* Persist/: Persist.pm, Driver/DBI/DBI.pm,
+	Driver/DBI/PostgreSQL/PostgreSQL.pm, Driver/Memory/Memory.pm,
+	t/driver_help.t: Created custom carp/croak routines that report
+	errors outside of Persist properly.
+
+2003-08-07 15:30  hanenkamp
+
+	* Persist/Driver/Memory/Memory.pm: Got rid of noisy 'XXX used with
+	undefined value' type messages by adding "no warning" to closures.
+
+2003-08-06 19:41  hanenkamp
+
+	* Makefile.PL, Persist/Filter/Makefile.PL: Updated prerequisites
+	again.
+
+2003-08-06 19:30  hanenkamp
+
+	* Makefile.PL: Added prerequisites to the Makefile.
+
+2003-08-06 15:03  hanenkamp
+
+	* Persist/Driver/Memory/: Memory.pm, t/null_join.t: Added a test
+	for and fixed a bug that caused joins, where all tables contained
+	no data, to return a bogus empty row.
+
+2003-07-27 13:55  hanenkamp
+
+	* Persist/Tabular/Tabular.pm: Added a link from
+	$tabular->filter(...) to Persist:Filter [thanks to Mark (cpan
+	#3052)].
+
+2003-07-26 17:14  hanenkamp
+
+	* README: Updated README for release.
+
+2003-07-26 17:10  hanenkamp
+
+	* ChangeLog: Updated ChangeLog for release.
+
 2003-07-26 16:40  hanenkamp
 
 	* MANIFEST, Persist/Driver/Memory/Memory.pm,
