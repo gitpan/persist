@@ -8,8 +8,6 @@ use 5.008;
 use strict;
 use warnings;
 
-use Date::Calc 'Days_in_Month';
-
 require Exporter;
 
 our @ISA = qw(Exporter);
@@ -29,23 +27,7 @@ our @EXPORT_OK = (
 	@{ $EXPORT_TAGS{'driver_help'} },
 );
 
-# Setup version information. The only time this is really important is for a
-# release. When a release occurs it will be tagged so we can take the version
-# from the tag. Otherwise, we just use the CVS revision which isn't really the
-# version, but let's us create distributions anyway.
-#
-# This is used by ../Makefile.PL for version information for the entire
-# package and for the PPD.
-our $VERSION_TAG = '$Name: persist-0_3_3 $';
-our $VERSION_REV = '$Revision: 1.11 $';
-our $VERSION;
-
-if ($VERSION_TAG =~ /\$Name:\s+persist-(\d+)_(\d+)_(\d+)(\S*)/i) {
-	$VERSION = "$1.$2.$3$4";
-} else {
-	( $VERSION ) = '$Revision: 1.11 $' =~ /\$Revision:\s+(\S+)/;
-	$VERSION .= '-nr';
-}
+our $VERSION = '0.5.0';
 
 =head1 NAME
 
@@ -127,49 +109,11 @@ use constant REAL			=> 4;
 
 =item TIMESTAMP
 
-A date/time value. This should store a date and time value accurate to the
-second (there's no need to note leap seconds). This should be able to store as
-wide of a date range as reasonble. Accuracy of dates is a very difficult
-prospect whenever moving more than a century in any direction, so very little
-standardization can realistically be expected. Values of this type are
-represented in Perl as a string in the format ECCYYMMDDhhmmssTTTTT where all
-fields are completely padded with zeros (0).
+A date/time value. Values of this type will be represented in Perl as an object
+of the DateTime package. When represented as a string, it should be in ISO 8601
+format.
 
-The fields are: 
-
-=over
-
-=item E is the epoch and is either '1' for AD or '0' for BC;
-
-=item CC is the century minus one (21st century is 20, duh);
-
-=item YY is the century year (note that 00 is an invalid year in the first
-century of either epoch);
-
-=item MM is the month index based at 0 (0 is January, 11 is December);
-
-=item DD is the day of month based at 1 (the last day of the month in January is
-31);
-
-=item hh is the hour of the day ranging from 0 to 23;
-
-=item mm is the minute of the hour ranging from 0 to 59;
-
-=item ss is the second of the minute ranging from 0 to 59; and
-
-=item TTTTT is the timezone where the first character is either '+' or '-' to
-mark the direction of change from UTC and other four characters are a value
-between 0000 and 1200 to mark the number of whole minutes difference from
-UTC--UTC may be specified as either "-0000" or "+0000". A date with a time
-zone of UTC will be said to be "normalize".
-
-=back
-
-It is probably safe to assume that dates for any modern time are according to
-the Gregorian calendar, but may belong to a related calendar when dates are
-listed from more than a few centuries past. (For information on the history of
-calendars and how they have been manipulated beyond all comprehension, I
-suggestion seeing L<http://astro.nmsu.edu/~lhuber/leaphist.html>.)
+See the documentation of L<DateTime> for details.
 
 =cut
 
@@ -229,145 +173,6 @@ For example,
 =cut
 
 use constant LINK			=> 2;
-
-=back
-
-=head2 HELPER FUNCTIONS
-
-The helper functions include the following:
-
-=over
-
-=item @date = Persist->parse_timestamp($date)
-
-Given a timestamp string, this function will parse the date into it's parts. The
-output array will contain 9 fields. The fields, in order, are:
-
-  0 - Epoch (either '0' or '1')
-  1 - Century (a value from '00' to '40')
-  2 - Year (a value from '00' to '99')
-  3 - Month (a value from '00' to '11')
-  4 - Day (a value with varying range but always in '01' and '31')
-  5 - Hour (a value from '00' to '23')
-  6 - Minute (a value from '00' to '59')
-  7 - Second (a value from '00' to '59')
-  8 - Timezone (a value from '-1200' to '+1200')
-
-=cut
-
-sub parse_timestamp {
-	my ($class, $date) = @_;
-
-	my @result;
-	$result[0]  = substr $date, 0,  1;
-	$result[1]  = substr $date, 1,  2;
-	$result[2]  = substr $date, 3,  2;
-	$result[3]  = substr $date, 5,  2;
-	$result[4]  = substr $date, 7,  2;
-	$result[5]  = substr $date, 9,  2;
-	$result[6]  = substr $date, 11, 2;
-	$result[7]  = substr $date, 13, 2;
-	$result[8]  = substr $date, 15, 5;
-
-	@result;
-}
-
-=item $date = Persist->format_timestamp(@date)
-
-Taking an array structured in the same way as the date returned by
-C<Persist->parse_timestamp>, returns a string formatted as described in the
-section about the C<TIMESTAMP> data type.
-
-=cut
-
-sub format_timestamp {
-	my ($class, @date) = @_;
-	sprintf '%s%02d%02d%02d%02d%02d%02d%02d%s', @date;
-}
-
-=item $date = Persist->timestamp_from_time([ $time ])
-
-Taking a time as returned from the perl function L<perlfunc/time>, creates
-a date formatted for a Persist source. If the time argument is left out
-then the current time is used.
-
-=cut
-
-sub timestamp_from_time {
-	my ($class, $time) = @_;
-
-	$time = time unless defined $time;
-	my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) =
-			gmtime($time);
-
-	sprintf '%s%02d%02d%02d%02d%02d%02d%02d+0000',
-			($year + 1900 < 0 ? '0' : '1'), 19 + $year/100, $year % 100,
-			$mon, $mday, $hour, $min, $sec;
-}
-
-=item $ts_norm = Persist->normalize_timestamp($timestamp)
-
-This method takes the given timestamp and transforms it such that the timestamp
-uses UTC as it's timezone (as "+0000"). If an absolute time comparison is
-needed, the timestamp may now be compared using the lexigraphic comparison
-operators (eq, ne, le, ge, lt, gt, cmp).
-
-This method assumes that timezones aren't a relevent fact of dates in B.C.
-That is, it will not properly handle timezone normalization if trying to
-adjust them for a date in the previous epoch.
-
-=cut
-
-sub normalize_timestamp {
-	my ($class, $time) = @_;
-
-	my @times = $class->parse_timestamp($time);
-	my $tzs = $times[8] =~ /\+/ ? -1 : 1;
-	my $tzh = int(substr $times[8], 1, 2);
-	my $tzm = int(substr $times[8], 3, 2);
-
-	$times[5] += $tzs * $tzh;
-	$times[6] += $tzs * $tzm;
-
-	# Check for minutes roll-over
-	if ($times[6] < 0) {
-		$times[6] += 60;
-		--$times[5];
-	} elsif ($times[6] > 60) {
-		$times[6] -= 60;
-		++$times[5];
-	}
-
-	# Check for hours roll-over
-	if ($times[5] < 0) {
-		$times[5] += 24;
-		--$times[4];
-	} elsif ($times[5] > 23) {
-		$times[5] -= 24;
-		++$times[4];
-	}
-
-	# Check for days, months, and years roll-over
-	if ($times[4] < 1) {
-		$times[3] = $times[3] == 0 ? 11 : $times[3] - 1;
-		$times[4] = Days_in_Month($times[1].$times[2], $times[3]+1);
-		--$times[2] if $times[3] == 11;
-		if ($times[2] < 0) {
-			--$times[1];
-			$times[2] += 100;
-		}
-	} elsif ($times[4] > Days_in_Month($times[1].$times[2], $times[3]+1)) {
-		$times[4] = 1;
-		$times[3] = $times[3] == 11 ? 0 : $times[3] + 1;
-		++$times[2] if $times[3] == 0;
-		if ($times[2] > 99) {
-			++$times[1];
-			$times[2] -= 100;
-		}
-	}
-
-	sprintf '%s%02d%02d%02d%02d%02d%02d%02d+0000', @times;
-}
 
 =back
 

@@ -10,4 +10,4 @@ $driver = new Persist::Driver::Memory;
 
 $driver->create_table(@folks);
 
-is($driver->delete('folks', "name = 'Sterling'"), 0, 'Deleting nothing.');
+is($driver->delete(-table => 'folks', -filter => "name = 'Sterling'"), 0, 'Deleting nothing.');

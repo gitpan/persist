@@ -1,3 +1,113 @@
+2003-09-06 15:09  hanenkamp
+
+	* Bugs, ChangeLog, MANIFEST, README, ToDo: Updated documentation
+	for release.
+
+2003-09-06 14:37  hanenkamp
+
+	* Makefile.PL: Updated prerequisites.
+
+2003-09-06 14:29  hanenkamp
+
+	* Makefile.PL, Persist/Driver/DBI/DBI.pm,
+	Persist/Driver/DBI/PostgreSQL/PostgreSQL.pm: Updated some version
+	numbers using the incompatible v-string format.
+
+2003-09-06 14:20  hanenkamp
+
+	* Persist/: Overview.pod, Persist.pm: Updated the version number
+	and removed a needless and unverified editorial comment.
+
+2003-09-06 10:53  hanenkamp
+
+	* Persist/: Makefile.PL, Overview.pod, Filter/Filter.pm,
+	Source/Source.pm, Table/Table.pm, Tabular/Tabular.pm: Updated the
+	documentation for the new argument passing syntax and added a new
+	draft document providing an overview of the library.
+
+2003-09-04 10:29  hanenkamp
+
+	* Makefile.PL: Made the make script easier to configure through
+	interactive prompts.
+
+2003-09-04 10:16  hanenkamp
+
+	* MANIFEST, Makefile.PL, testsetup.PL, Persist/Persist.pm,
+	Persist/Driver/DBI/PostgreSQL/PostgreSQL.pm,
+	Persist/Driver/DBI/PostgreSQL/t/timestamp.t,
+	Persist/Driver/Memory/Memory.pm,
+	Persist/Driver/Memory/t/timestamp.t, Persist/Filter/Filter.pm,
+	Persist/t/format_timestamp.t, Persist/t/normalize_timestamp.t,
+	Persist/t/parse_timestamp.t, Persist/t/timestamp_from_time.t: Fixed
+	date support from that stupid custom format to the standard ISO
+	8601 format. Dates look like the DateTime object to users.
+
+2003-09-04 07:13  hanenkamp
+
+	* Persist/Driver/DBI/PostgreSQL/PostgreSQL.pm: Updated constructor
+	with more connect options and corrected some documentation.
+
+2003-09-03 22:52  hanenkamp
+
+	* Bugs, ChangeLog, ToDo, testsetup.PL: Updated supplemental files.
+
+2003-09-03 22:51  hanenkamp
+
+	* Makefile.PL: Added Getargs::Mixed to the prerequisite list.
+
+2003-09-03 22:50  hanenkamp
+
+	* Persist/: Filter/Filter.pm, Join/Join.pm, Join/t/explicit_join.t,
+	Join/t/join.t, Source/Source.pm, Source/t/source.t, Table/Table.pm,
+	Table/t/table.t, Tabular/Tabular.pm: Added a facility to start
+	taking parameters by position or by name. As yet, this is
+	undocumented.
+
+2003-09-03 22:49  hanenkamp
+
+	* Persist/Driver/: Driver.pm, DBI/DBI.pm,
+	DBI/PostgreSQL/PostgreSQL.pm, DBI/PostgreSQL/t/autonumber.t,
+	DBI/PostgreSQL/t/boolean.t, DBI/PostgreSQL/t/create.t,
+	DBI/PostgreSQL/t/insert_update_delete.t,
+	DBI/PostgreSQL/t/integer.t, DBI/PostgreSQL/t/join.t,
+	DBI/PostgreSQL/t/new_instance.t, DBI/PostgreSQL/t/pgcleanup,
+	DBI/PostgreSQL/t/real.t, DBI/PostgreSQL/t/small_join.t,
+	DBI/PostgreSQL/t/timestamp.t, DBI/PostgreSQL/t/varchar.t,
+	Memory/Memory.pm, Memory/t/autonumber.t, Memory/t/boolean.t,
+	Memory/t/create.t, Memory/t/delete_from_none.t,
+	Memory/t/insert_update_delete.t, Memory/t/integer.t,
+	Memory/t/join.t, Memory/t/new_instance.t, Memory/t/null_join.t,
+	Memory/t/real.t, Memory/t/small_join.t, Memory/t/timestamp.t,
+	Memory/t/varchar.t: Changed the driver architecture fundamentally.
+	All driver parameters are passed by name rather than position to
+	make future extensions easier.
+
+2003-09-03 22:48  hanenkamp
+
+	* Persist/Persist.pm: Versions will be incremented manually now.
+	This allows CPAN et al. to detect the version correctly.
+
+2003-08-13 13:24  hanenkamp
+
+	* Persist/Table/Table.pm: Updated magical value feature so that it
+	will not warn when it is used normally--as some might make warnings
+	fatal.
+
+2003-08-13 13:19  hanenkamp
+
+	* Persist/: Driver/DBI/PostgreSQL/PostgreSQL.pm,
+	Driver/DBI/PostgreSQL/t/new_instance.t, Table/Table.pm,
+	Tabular/Tabular.pm: Added magical feature to
+	Persist::Tabular::value that allows it to be treated like the
+	AUTOLOADed methods if the user attempts to use it that way.
+
+2003-08-09 11:29  hanenkamp
+
+	* Bugs, ChangeLog, MANIFEST, Makefile.PL, README, ToDo,
+	Persist/Driver/DBI/PostgreSQL/PostgreSQL.pm,
+	Persist/Driver/Memory/Memory.pm, Persist/Filter/Filter.pm: Updated
+	documentation and such for release.
+
 2003-08-08 08:47  hanenkamp
 
 	* Persist/: Persist.pm, Driver/DBI/DBI.pm,

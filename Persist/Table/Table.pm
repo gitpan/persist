@@ -4,13 +4,17 @@ use 5.008;
 use strict;
 use warnings;
 
+use Carp;
+
+use Getargs::Mixed;
+
 use Persist qw(:constants);
 use Persist::Tabular;
 
 our @ISA = qw(Persist::Tabular);
 
 our $AUTOLOAD;
-our ( $VERSION ) = '$Revision: 1.8 $' =~ /\$Revision:\s+([^\s]+)/;
+our ( $VERSION ) = '$Revision: 1.12 $' =~ /\$Revision:\s+([^\s]+)/;
 
 =head1 NAME
 
@@ -72,7 +76,7 @@ sub new {
 	$self->{-table} = $table;
 	$self->{-filter} = $filter;
 	
-	for my $key ($driver->indexes($table)) {
+	for my $key ($driver->indexes(-table => $table)) {
 		if ($key->[0] == PRIMARY) {
 			$self->{-pk} = $key->[1];
 			last;
@@ -100,7 +104,7 @@ sub table_name {
 sub _open {
 	my ($self, $reset) = @_;
 	$self->{-handle} = $self->{-driver}->open_table
-			($self->{-table}, $self->{-filter})
+			(-table => $self->{-table}, -filter => $self->{-filter})
 			if $reset or not $self->{-handle};
 }
 
@@ -115,7 +119,7 @@ sub _sync {
 	if (exists $self->{-changes}) {
 		my $record = $self->{-changes};
 		if ($self->{-new}) {
-			$self->{-driver}->insert($self->{-table}, $record);
+			$self->{-driver}->insert(-table => $self->{-table}, -values => $record);
 			delete $self->{-new};
 		} else {
 			my $filter;
@@ -126,9 +130,9 @@ sub _sync {
 				$filter .= "$key = ?";
 				push @bindings, $self->{-data}{$key};
 			}
-			my @args = ($self->{-table}, $record);
-			push @args, $filter if $filter;
-			push @args, \@bindings if @bindings;
+			my @args = (-table => $self->{-table}, -set => $record);
+			push @args, -filter => $filter if $filter;
+			push @args, -bindings => \@bindings if @bindings;
 			$self->{-driver}->update(@args);
 		}
 		delete $self->{-changes};
@@ -151,24 +155,25 @@ sub cancel {
 	delete $self->{-changes};
 }
 
-=item $value = $table-E<gt>value($column [, $new_value ] )
+=item $value = $table-E<gt>value($column [, $set ] )
 
 Either gets/sets a column value.
 
 =cut
 
 sub value {
-	my ($self, $key, $new_value) = @_;
+	my ($self, %args) = parameters('self', [qw(;column set)], @_);
+	my ($key, $new_value) = @args{qw(column set)};
 
 #debug#	print STDERR "$key new_value: $new_value\n" if defined $new_value;
 
-	$self->{-changes}{$key} = $new_value if defined $new_value;
-	$self->{-new} || 
-		(exists $self->{-changes} && exists $self->{-changes}{$key}) ? 
-			$self->{-changes}{$key} : $self->{-data}{$key};
+    $self->{-changes}{$key} = $new_value if defined $new_value;
+    $self->{-new} || 
+        (exists $self->{-changes} && exists $self->{-changes}{$key}) ? 
+            $self->{-changes}{$key} : $self->{-data}{$key};
 }
 
-=item $value = $table-E<gt>last_seq($column)
+=item $value = $table-E<gt>last_value($column)
 
 Retrieves the last sequence value assigned to the given column during an
 insert operation. This call is only valid upon columns of type AUTONUMBER.
@@ -177,9 +182,10 @@ Using this method on any other column type will result in an exception.
 =cut
 
 sub last_value {
-	my ($self, $key) = @_;
+	my ($self, %args) = parameters('self', [qw(column)], @_);
+	my $key = $args{column};
 
-	$self->{-driver}->sequence_value($self->{-table}, $key);
+	$self->{-driver}->sequence_value(-table => $self->{-table}, -column => $key);
 }
 
 =item $table-E<gt>save
@@ -201,14 +207,15 @@ sub save {
 
 =item $table-E<gt>insert( [ \%values ] )
 
-Marks the current record as being a new record. And then proceeds to set the
-given C<%values>. All values will default to C<undef> if not specified by
-C<%values>.
+Marks the current record as being a new record. If given, it will set the
+columns that are keys in C<%values> to the given values. All values will default
+to C<undef> if not specified by C<%values>.
 
 =cut
 
 sub insert {
-	my ($self, $values) = @_;
+	my ($self, %args) = parameters('self', [qw(;values)], @_);
+	my $values = $args{'values'};
 
 	$self->_sync;
 	$self->{-new} = 1;
@@ -228,7 +235,8 @@ Inserts a record immediately with the given C<%values>. This is equivalent to
 =cut
 
 sub insert_now {
-	my ($self, $values) = @_;
+	my ($self, %args) = parameters('self', [qw(values)], @_);
+	my $values = $args{'values'};
 
 	$self->insert($values);
 	$self->save;
@@ -254,14 +262,14 @@ sub delete {
 			$filter .= "$key = ?";
 			push @bindings, $self->{-data}{$key};
 		}
-		my @args = ($self->{-table});
-		push @args, $filter if $filter;
-		push @args, \@bindings if @bindings;
+		my @args = (-table => $self->{-table});
+		push @args, -filter => $filter if $filter;
+		push @args, -bindings => \@bindings if @bindings;
 		$self->{-driver}->delete(@args);
 	}
 }
 
-=item $value = $table-E<gt>I<E<lt>columnE<gt>>( [ $new_value ] )
+=item $value = $table-E<gt>I<E<lt>columnE<gt>>( [ $set ] )
 
 Gets/sets a column value. This is a shorthand for C<value>.
 
@@ -274,9 +282,10 @@ shorthand for C<last_seq>.
 =cut
 
 sub AUTOLOAD {
-	my ($self, $new_value) = @_;
+	my ($self, %args) = parameters('self', [qw(;set)], @_);
+	my $new_value = $args{set};
 
-	my ($key) = $AUTOLOAD =~ /::([^:]+)$/;
+	my ($key) = $AUTOLOAD =~ /([^:]+)$/;
 	if ($key =~ /^last_/) {
 		$key = substr $key, 5;
 		$self->last_value($key);

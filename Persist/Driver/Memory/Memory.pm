@@ -4,16 +4,15 @@ use 5.008;
 use strict;
 use warnings;
 
+use DateTime;
+use DateTime::Format::ISO8601;
+
 use Persist qw(:constants :driver_help);
 use Persist::Filter;
 use Persist::Driver;
 
-our ( $VERSION ) = '$Revision: 1.11 $' =~ /\$Revision:\s+(\S+)/;
+our ( $VERSION ) = '$Revision: 1.13 $' =~ /\$Revision:\s+(\S+)/;
 our @ISA = qw( Persist::Driver );
-
-# FIXME Because of the nature of the way it is represented in string format,
-# values of type TIMESTAMP may not always be sorted correctly--specifically
-# dates in the BC epoch.
 
 =head1 NAME
 
@@ -24,9 +23,6 @@ Persist::Driver::Memory - Persist driver for an in Memory source
   use Persist::Source;
 
   $source = new Persist::Source('Persist::Driver::Memory');
-
-  @conn = $source->new_source('newfoo', 'newbar');
-  $source->delete_source('newfoot');
 
   # Use other Persist::Source methods ...
 
@@ -92,8 +88,10 @@ and C<indexes> methods.
 =cut
 
 sub create_table {
-	my ($self, $name, @spec) = @_;
-	$self->{-tables}{$name} = [ @spec ];
+	my ($self, %args) = @_;
+	my ($name, $columns, $indexes) = @args{qw(-table -columns -indexes)};
+	$columns = { @$columns }; # the internal representation is a hash
+	$self->{-tables}{$name} = [ $columns, $indexes ];
 	1
 }
 
@@ -104,7 +102,8 @@ Forgets the schema and data and returns success.
 =cut
 
 sub delete_table {
-	my ($self, $name) = @_;
+	my ($self, %args) = @_;
+	my $name = $args{-table};
 	delete $self->{-tables}{$name};
 	delete $self->{-data}{$name};
 	1
@@ -154,7 +153,7 @@ sub _rewrite_filter {
 	my (%columns, %lookup);
 	if (defined $i) {
 		my $name = ref $$tables[$i] ? $$tables[$i][0] : $$tables[$i];
-		my %tc = $self->columns($name);
+		my %tc = $self->columns(-table => $name);
 		my $number = $i + 1;
 		while (my ($k,$v) = each %tc) {
 			$columns{"$name.$k"} = $columns{$k} = $v;
@@ -164,7 +163,7 @@ sub _rewrite_filter {
 		for ($i = 1; $i < @$tables; $i+=2) {
 			my $name = ref $$tables[$i] ? $$tables[$i][0] : $$tables[$i];
 			my $alias = $$tables[$i-1];
-			my %tc = $self->columns($name);
+			my %tc = $self->columns(-table => $name);
 			my $number = ($i + 1)/2;
 			while (my ($k,$v) = each %tc) {
 				$columns{"$alias.$k"} = $columns{$k} = $v;
@@ -193,6 +192,17 @@ sub _rewrite_filter {
 	
 	$ast->remap_on('Persist::Filter::Comparison', sub {
 		(my $a, local $_, my $b) = @{$_[0]};
+
+		# Convert date strings to DateTime
+		for my $ids ([$a, $b], [$b, $a]) {
+			my ($a, $b) = @$ids;
+			if ($a->isa('Persist::Filter::Identifier')
+					and $columns{$$a}[0] == TIMESTAMP
+					and $b->isa('Persist::Filter::String')) {
+				# TODO This is bad, we don't want to parse the date at every use!
+				$$b = "DateTime::Format::ISO8601->parse_datetime($$b)"
+			}
+		}
 
 		if 	  (/^=$/) 	{ ${$_[0]}[1] = &$is_numeric($a, $b) ? '==' : 'eq' }
 		elsif (/^<>$/)	{ ${$_[0]}[1] = &$is_numeric($a, $b) ? '!=' : 'ne' }
@@ -281,20 +291,22 @@ use constant JOIN => 2;
 use constant COUNTER => 3;
 
 sub open_table {
-	my ($self, $table, $filter) = @_;
+	my ($self, %args) = @_;
+	my ($table, $filter) = @args{qw(-table -filter)};
 	my $closure = _filter_closure(1, 
 			$self->_rewrite_columns([ $table ], [ $filter ]));
 	[ $table, $closure, undef, 0 ];
 }
 
-=item $handle = $driver-E<gt>open_join($tables [, $filters ] )
+=item $handle = $driver-E<gt>open_join(%args)
 
 Returns a handle for accessing a joined set of tables.
 
 =cut
 
 sub open_join {
-	my ($self, $tables, $filter) = @_;
+	my ($self, %args) = @_;
+	my ($tables, $filter) = @args{qw(-tables -filter)};
 	my $filt_clos = _filter_closure(scalar(@$tables), 
 			$self->_rewrite_columns($tables, $filter));
 	
@@ -314,7 +326,7 @@ sub open_join {
 	for my $table (@$tables) {
 		my $name = ref $table ? $table->[0] : $table;
 
-		my @indexes = $self->indexes($name);
+		my @indexes = $self->indexes(-table => $name);
 		for my $index (@indexes) {
 			if ($index->[0] == LINK) {
 				my $lflds = $index->[1];
@@ -322,7 +334,7 @@ sub open_join {
 				my $rflds = $index->[3];
 				if ($number{$fname} and 
 						(not $joined{$name} or not $joined{$fname})) {
-					my %cols = $self->columns($name);
+					my %cols = $self->columns(-table => $name);
 					push @joins,
 						map { 
 							my $op = $cols{$$lflds[$_]}[0] == VARCHAR ? 'eq' : '==';
@@ -341,14 +353,15 @@ sub open_join {
 	[ $tables, $filt_clos, $join_clos, ( 0 ) x scalar(@$tables) ];
 }
 
-=item $handle = $driver-E<gt>open_explicit_join($tables, $as_exprs [, $filter ])
+=item $handle = $driver-E<gt>open_explicit_join(%args)
 
 Returns a handle for accessing an explicitly joined set of tables.
 
 =cut
 
 sub open_explicit_join {
-	my ($self, $tables, $on_exprs, $filter) = @_;
+	my ($self, %args) = @_;
+	my ($tables, $on_exprs, $filter) = @args{qw(-tables -on_exprs -filter)};
 	my $filt_clos = _filter_closure(scalar(@$tables)/2,
 			$self->_rewrite_columns($tables, $filter, 1));
 
@@ -375,19 +388,24 @@ sub open_explicit_join {
 	[ [ @tables ], $filt_clos, $join_clos, ( 0 ) x (scalar(@$tables)/2) ];
 }
 
-=item $rows = $driver-E<gt>insert($name, $values)
+=item $rows = $driver-E<gt>insert(%args)
 
 Inserts a row into the table and returns 1.
 
 =cut
 
+# FIXME Perform rudimentary checking on insert to make certain that the user
+# doesn't attempt to insert non-scalars.
 sub insert {
-	my ($self, $name, $values) = @_;
-	my %columns = $self->columns($name);
+	my ($self, %args) = @_;
+	my ($name, $values) = @args{qw(-table -values)};
+	my %columns = $self->columns(-table => $name);
 
 	while (my ($column, $type) = each %columns) {
 		if ($type->[0] == AUTONUMBER) {
 			$values->{$column} = ++$self->{-sequences}{$name}{$column};
+		} elsif ($type->[0] == TIMESTAMP and defined $values->{$column}) {
+			$values->{$column} = DateTime::Format::ISO8601->parse_datetime($values->{$column});
 		}
 	}
 	
@@ -395,15 +413,26 @@ sub insert {
 	1;
 }
 
-=item $rows = $driver-E<gt>update($name, $set [, $set [, $bindings ] ]
+=item $rows = $driver-E<gt>update(%args)
 )
 
 Updates the table rows specified by filter to the values in set.
 
 =cut
 
+# FIXME Perform rudimentary checking on update to make certain that the user
+# doesn't attempt to update non-scalars.
 sub update {
-	my ($self, $name, $set, $filter, $bindings) = @_;
+	my ($self, %args) = @_;
+	my ($name, $set, $filter, $bindings) = @args{qw(-table -set -filter -bindings)};
+
+	my %columns = $self->columns(-table => $name);
+	while (my ($column, $type) = each %columns) {
+		if ($type->[0] == TIMESTAMP and defined $set->{$column}) {
+			$set->{$column} = DateTime::Format::ISO8601->parse_datetime($set->{$column});
+		}
+	}
+
 	my $rewritten = $self->_rewrite_columns([ $name ], [ $filter ]);
 	if ($bindings) {
 		for my $binding (@$bindings[0 .. $#$bindings]) {
@@ -426,14 +455,15 @@ sub update {
 	$changed;
 }
 
-=item $rows = $driver-E<gt>delete($name [, $set [, $bindings ] ])
+=item $rows = $driver-E<gt>delete(%args)
 
 Deletes the table rows specified by filter.
 
 =cut
 
 sub delete {
-	my ($self, $name, $filter, $bindings) = @_;
+	my ($self, %args) = @_;
+	my ($name, $filter, $bindings) = @args{qw(-table -filter -bindings)};
 	my $rewritten = $self->_rewrite_columns([ $name ], [ $filter ]);
 	if ($bindings) {
 		for my $binding (@$bindings[0 .. $#$bindings]) {
@@ -456,28 +486,30 @@ sub delete {
 	$changed;
 }
 
-=item %columns = $driver-E<gt>columns($table)
+=item %columns = $driver-E<gt>columns(%args)
 
 Returns the column definition used to define the given table.
 
 =cut
 
 sub columns {
-	my ($self, $table) = @_;
+	my ($self, %args) = @_;
+	my $table = $args{-table};
 #debug#	croak "Table $table not found." unless defined($self->{-tables}{$table});
 #debug#	croak "Bad instance." unless ref $self;
 #debug#	croak "No table given." unless $table;
 	%{$self->{-tables}{$table}[0]};
 }
 
-=item @indexes = $driver-E<gt>indexes($table)
+=item @indexes = $driver-E<gt>indexes(%args)
 
 Returns the index definition used to define the given table.
 
 =cut
 
 sub indexes {
-	my ($self, $table) = @_;
+	my ($self, %args) = @_;
+	my $table = $args{-table};
 
 	croak "Table $table is not known."
 			unless defined $self->{-tables}{$table};
@@ -620,7 +652,8 @@ very much more overhead than a call to C<next>.
 =cut
 
 sub first {
-	my ($self, $handle) = @_;
+	my ($self, %args) = @_;
+	my $handle = $args{-handle};
 
 	if (ref $handle->[TABLE]) {
 		for (COUNTER .. $#$handle) {
@@ -633,14 +666,15 @@ sub first {
 	}
 }
 
-=item $row = $driver-E<gt>next($handle)
+=item $row = $driver-E<gt>next(%args)
 
 Retrieves the next column matched by the handle.
 
 =cut
 
 sub next {
-	my ($self, $handle) = @_;
+	my ($self, %args) = @_;
+	my $handle = $args{-handle};
 
 	if (ref $handle->[TABLE]) {
 		my $result = $self->_join($handle);
@@ -657,7 +691,8 @@ Retrieves the last numeric value for the autonumber column specified.
 =cut
 
 sub sequence_value {
-	my ($self, $table, $column) = @_;
+	my ($self, %args) = @_;
+	my ($table, $column) = @args{qw(-table -column)};
 
 	$self->{-sequences}{$table}{$column};
 }

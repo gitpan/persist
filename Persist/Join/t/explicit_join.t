@@ -53,13 +53,13 @@ for $src (@sources) {
 	}
 
 	eval {
-		$src->delete_table(@favorites);
+		$src->delete_table('favorites');
 	}; if ($@) {
 		diag("Could not clean up favorites table: $@");
 	}
 
 	eval {
-		$src->delete_table(@folks);
+		$src->delete_table('folks');
 	}; if ($@) {
 		diag("Could not clean up folks table: $@");
 	}

@@ -9,6 +9,6 @@ $driver = new Persist::Driver::Memory;
 $driver->create_table(@folks);
 $driver->create_table(@favorites);
 
-$sth = $driver->open_join([ 'folks', 'favorites' ]);
-$row = $driver->next($sth);
+$sth = $driver->open_join(-tables => [ 'folks', 'favorites' ]);
+$row = $driver->next(-handle => $sth);
 ok(!$row, 'Record test.');

@@ -6,8 +6,10 @@ use warnings;
 
 use Carp;
 
+use Getargs::Mixed;
+
 our $AUTOLOAD;
-our ( $VERSION ) = '$Revision: 1.5 $' =~ /\$Revision:\s+([^\s]+)/;
+our ( $VERSION ) = '$Revision: 1.8 $' =~ /\$Revision:\s+([^\s]+)/;
 
 =head1 NAME
 
@@ -75,7 +77,7 @@ sub first {
 	my $self = shift;
 
 	$self->_sync;
-	$self->{-data} = $self->{-driver}->first($self->{-handle});
+	$self->{-data} = $self->{-driver}->first(-handle => $self->{-handle});
 	$self->{-data} ? $self : undef;
 }
 
@@ -94,7 +96,7 @@ sub next {
 	my $self = shift;
 
 	$self->_sync;
-	$self->{-data} = $self->{-driver}->next($self->{-handle});
+	$self->{-data} = $self->{-driver}->next(-handle => $self->{-handle});
 	$self->{-data} ? $self : undef;
 }
 
@@ -109,7 +111,8 @@ For information on the format of filters see L<Persist::Filter>.
 =cut
 
 sub filter {
-	my ($self, $filter) = @_;
+	my ($self, %args) = parameters('self', [qw(filter)], @_);
+	my $filter = $args{filter};
 
 	$self->{-filter} = $filter;
 	$self->_sync(1);
@@ -124,9 +127,10 @@ been called prior to the this.
 =cut
 
 sub value {
-	my ($self, $key) = @_;
+	my ($self, %args) = parameters('self', [qw(column)], @_);
+	my $key = $args{column};
 
-	$self->{-data}{$key};
+    return $self->{-data}{$key};
 }
 
 =item $tabular-E<gt>I<E<lt>columnE<gt>>

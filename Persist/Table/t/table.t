@@ -59,7 +59,7 @@ for $src (@sources) {
 	}
 
 	eval {
-		$src->delete_table(@folks);
+		$src->delete_table('folks');
 	}; if ($@) {
 		diag("Error cleaning folks: $@");
 	}

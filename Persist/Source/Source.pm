@@ -6,10 +6,12 @@ use warnings;
 
 use Carp;
 
+use Getargs::Mixed;
+
 use Persist::Join;
 use Persist::Table;
 
-our ( $VERSION ) = '$Revision: 1.6 $' =~ /\$Revision:\s+([^\s]+)/;
+our ( $VERSION ) = '$Revision: 1.8 $' =~ /\$Revision:\s+([^\s]+)/;
 
 our $AUTOLOAD;
 
@@ -55,12 +57,18 @@ way to access persistent data.
 =item $source = new Persist::Source($driver, @args)
 
 This connects to a Persist data source using the driver named C<$driver>. The
-arguments C<@args> are passed to the driver.
+C<@args> argument is a special case to the mixed parameter passing syntax use by
+Persist. Instead of being a literal argument, C<@args> is a set of named
+(not mixed) arguments that are passed directly to the drivers.
 
 =cut
 
 sub new {
-	my ($class, $driver, @args) = @_;
+	my ($class, %args) = parameters('self', [qw(driver *)], @_);
+	my $driver = $args{driver};
+
+	delete $args{driver};
+	$args{"-$_"} = delete $args{$_} for (keys %args);
 	
 	my $self = bless {}, ref $class || $class;
 
@@ -68,7 +76,7 @@ sub new {
 	croak "Illegal driver package '$driver'."
 			unless $driver =~ /[a-z_][a-z0-9_]+(::[a-z_][a-z0-9_]+)*/i;
 	eval "package Persist::_firesafe; use $driver";
-	$self->{-driver} = $driver->new(@args);
+	$self->{-driver} = $driver->new(%args);
 
 	$self;
 }
@@ -91,6 +99,10 @@ Creates a new persistent source and returns the arguments required to pass to
 the driver to access the new source. See driver documentation for the arguments
 required.
 
+The C<@args> list is a special case to the mixed argument syntax of Persist.
+These are required to be named arguments as they are passed directly on to the
+driver itself.
+
 =cut
 
 sub new_source {
@@ -102,6 +114,10 @@ sub new_source {
 
 Deletes a persistent source. See driver documentation for the arguments
 required.
+
+The C<@args> list is a special case to the mixed argument syntax of Persist.
+These are required to be named arguments as they are passed directly on to the
+driver itself.
 
 =cut
 
@@ -127,8 +143,13 @@ See L<Persist> for information on type and index arguments.
 =cut
 
 sub new_table {
-	my ($self, $table, $columns, $indexes) = @_;
-	$self->{-driver}->create_table($table, $columns, $indexes);
+	my ($self, %args) = parameters('self', [qw(table columns indexes)], @_);
+	my ($table, $columns, $indexes) = @args{qw(table columns indexes)};
+	$columns = [ %$columns ] if ref $columns eq 'HASH';
+	$self->{-driver}->create_table(
+		-table => $table,
+		-columns => $columns,
+		-indexes => $indexes);
 }
 
 =item $source-E<gt>delete_table($table)
@@ -138,8 +159,9 @@ Delete the table naemd by C<$table>.
 =cut
 
 sub delete_table {
-	my ($self, $table) = @_;
-	$self->{-driver}->delete_table($table);
+	my ($self, %args) = parameters('self', [qw(table)], @_);
+	my $table = $args{table};
+	$self->{-driver}->delete_table(-table => $table);
 }
 
 =item @tables = $source-E<gt>tables
@@ -153,7 +175,7 @@ sub tables {
 	$self->{-driver}->tables;
 }
 
-=item $join = $source-E<gt>join($tables, $filters)
+=item $join = $source-E<gt>join($tables [, $filters ] )
 
 Returns a reference to a L<Persist::Join> object which may be used to access
 columns of the joined tables. C<$tables> is a list of tables to join and
@@ -171,11 +193,12 @@ For more complicated joining, try C<explicit_join>.
 =cut
 
 sub join {
-	my ($self, $join, $filter) = @_;
+	my ($self, %args) = parameters('self', [qw(join; filter)], @_);
+	my ($join, $filter) = @args{qw(join filter)};
 	new Persist::Join($self->{-driver}, $join, $filter);
 }
 
-=item $join = $source-E<gt>explicit_join($tables, $as_exprs, $filter)
+=item $join = $source-E<gt>explicit_join($tables, $on_exprs [, $filter ])
 
 This performs a more explicit form of the join operation. This allows the user
 to pick the fields joined upon in the case that there is no key constraint to
@@ -199,12 +222,12 @@ For those that might not know, the arrow (=>) is equivalent to comma (,) except
 that it causes the preceding value to be stringified (i.e., interpreted as a
 string). (Wacky Perl syntactic sugar. ;)
 
-=item $as_exprs
+=item $on_exprs
 
 This is an array reference to a set of strings. There should be one expression
 for each join. Joins are performed in the order they are specified in
 C<$tables>. The first two tables given will be joined first by the first
-expression in the first element of C<$as_exprs>. The third table will be joined
+expression in the first element of C<$on_exprs>. The third table will be joined
 to the first two by the second element. The fourth table by the third element,
 etc. The expressions should use the table name aliases given in the C<$table>
 argument.
@@ -215,7 +238,7 @@ cross-product (unqualified join) is desired, then the C<undef> value should be
 used in place of the expression. B<WARNING: A full cross-product join can be
 extremely inefficient in some contexts.>
 
-=item $filter
+=item $filter (optional)
 
 This string has the same purpose as the C<$filters> argument to the other
 C<join> method. However, this method is always a single string. This variable
@@ -226,12 +249,13 @@ should also use the table name aliases given in the C<$table> argument.
 =cut
 
 sub explicit_join {
-	my ($self, $tables, $as_exprs, $filter) = @_;
+	my ($self, %args) = parameters('self', [qw(tables on_exprs; filter)], @_);
+	my ($tables, $on_exprs, $filter) = @args{qw(tables on_exprs filter)};
 	Persist::Join->new_explicit($self->{-driver}, 
-			$tables, $as_exprs, $filter);
+			$tables, $on_exprs, $filter);
 }
 
-=item $table = $source-E<gt>table($table, $filter)
+=item $table = $source-E<gt>table($table [, $filter ])
 
 Returns a reference to a L<Persist::Table> object which may be used to access
 columns of the table.
@@ -240,7 +264,8 @@ columns of the table.
 
 # FIXME An exception should occur in table when the given table doesn't exist.
 sub table {
-	my ($self, $table, $filter) = @_;
+	my ($self, %args) = parameters('self', [qw(table; filter)], @_);
+	my ($table, $filter) = @args{qw(table filter)};
 	new Persist::Table($self->{-driver}, $table, $filter);
 }
 
@@ -251,7 +276,8 @@ A shortcut to C<$source-E<gt>table('E<lt>tableE<gt>')>.
 =cut
 
 sub AUTOLOAD {
-	my ($self, $filter) = @_;
+	my ($self, %args) = parameters('self', [qw(;filter)], @_);
+	my $filter = $args{filter};
 	my ($table) = $AUTOLOAD =~ /::([^:]+)$/;
 	$self->table($table, $filter);
 }
@@ -260,7 +286,7 @@ sub DESTROY {
 	# prevent AUTOLOAD from hooking
 }
 
-=item $source-E<gt>delete($table, $filter)
+=item $source-E<gt>delete($table [, $filter ])
 
 Deletes all records matching the given filter.
 
@@ -271,8 +297,9 @@ Returns the number of rows deleted.
 =cut
 
 sub delete {
-	my ($self, $table, $filter) = @_;
-	$self->{-driver}->delete($table, $filter);
+	my ($self, %args) = parameters('self', [qw(table; filter)], @_);
+	my ($table, $filter) = @args{qw(table filter)};
+	$self->{-driver}->delete(-table => $table, -filter => $filter);
 }
 
 =item $source-E<gt>insert($table, \%values)
@@ -285,8 +312,9 @@ Returns 1 on success.
 =cut
 
 sub insert {
-	my ($self, $table, $values) = @_;
-	$self->{-driver}->insert($table, $values);
+	my ($self, %args) = parameters('self', [qw(table values)], @_);
+	my ($table, $values) = @args{qw(table values)};
+	$self->{-driver}->insert(-table => $table, -values => $values);
 }
 
 =item $rows = $source-E<gt>update($table, \%set [, $filter ] )
@@ -301,8 +329,9 @@ Returns the number of rows altered.
 =cut
 
 sub update {
-	my ($self, $table, $set, $filter) = @_;
-	$self->{-driver}->update($table, $set, $filter);
+	my ($self, %args) = parameters('self', [qw(table set; filter)], @_);
+	my ($table, $set, $filter) = @args{qw(table set filter)};
+	$self->{-driver}->update(-table => $table, -set => $set, -filter => $filter);
 }
 
 =back

@@ -48,6 +48,7 @@ Persist/Join/Makefile.PL
 Persist/Join/t/explicit_join.t
 Persist/Join/t/join.t
 Persist/Makefile.PL
+Persist/Overview.pod
 Persist/Persist.pm
 Persist/Source/Makefile.PL
 Persist/Source/Source.pm
@@ -61,15 +62,11 @@ Persist/Tabular/t/tabular.t
 Persist/t/autonumber.t
 Persist/t/boolean.t
 Persist/t/driver_help.t
-Persist/t/format_timestamp.t
 Persist/t/integer.t
 Persist/t/link.t
-Persist/t/normalize_timestamp.t
-Persist/t/parse_timestamp.t
 Persist/t/primary.t
 Persist/t/real.t
 Persist/t/timestamp.t
-Persist/t/timestamp_from_time.t
 Persist/t/unique.t
 Persist/t/varchar.t
 README

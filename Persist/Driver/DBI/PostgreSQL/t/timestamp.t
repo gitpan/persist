@@ -15,67 +15,67 @@ eval {
 	$driver->create_table(@folks);
 
 	for $folk (@folks_data) {
-		$driver->insert('folks', { name => $folk->{name}, dob => $folk->{dob} });
+		$driver->insert(-table => 'folks', -values => { name => $folk->{name}, dob => $folk->{dob} });
 	}
 
-	$sth = $driver->open_table('folks', "dob < '119750001122133+0000'");
-	$row = $driver->next($sth);
+	$sth = $driver->open_table(-table => 'folks', -filter => "dob < '1975-01-01T12:21:33Z'");
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Gregg', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Rhonda', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'James', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok(!$row, 'Record test.');
 	
-	$sth = $driver->open_table('folks', "dob > '119750001122133+0000'");
-	$row = $driver->next($sth);
+	$sth = $driver->open_table(-table => 'folks', -filter => "dob > '1975-01-01T12:21:33Z'");
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Terri', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Laura', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok(!$row, 'Record test.');
 
-	$sth = $driver->open_table('folks', "dob <= '119750001122133+0000'");
-	$row = $driver->next($sth);
+	$sth = $driver->open_table(-table => 'folks', -filter => "dob <= '1975-01-01T12:21:33Z'");
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Sterling', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Gregg', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Rhonda', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'James', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok(!$row, 'Record test.');
 	
-	$sth = $driver->open_table('folks', "dob >= '119750001122133+0000'");
-	$row = $driver->next($sth);
+	$sth = $driver->open_table(-table => 'folks', -filter => "dob >= '1975-01-01T12:21:33Z'");
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Sterling', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Terri', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Laura', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok(!$row, 'Record test.');
 
-	$sth = $driver->open_table('folks', "dob = '119750001122133+0000'");
-	$row = $driver->next($sth);
+	$sth = $driver->open_table(-table => 'folks', -filter => "dob = '1975-01-01T12:21:33Z'");
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Sterling', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok(!$row, 'Record test.');
 	
-	$sth = $driver->open_table('folks', "dob <> '119750001122133+0000'");
-	$row = $driver->next($sth);
+	$sth = $driver->open_table(-table => 'folks', -filter => "dob <> '1975-01-01T12:21:33Z'");
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Terri', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Gregg', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Rhonda', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'James', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Laura', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok(!$row, 'Record test.');
 
 };

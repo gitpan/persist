@@ -14,8 +14,8 @@ for $source (@sources) {
 	eval {
 		is($source->is_dba, 1, 'Check DBA.');
 
-		ok($source->new_source('test', 'test'), 'New source.');
-		ok($source->delete_source('test'), 'Delete source.');
+		ok($source->new_source(-username => 'test', -password => 'test'), 'New source.');
+		ok($source->delete_source(-username => 'test'), 'Delete source.');
 
 		ok($source->new_table(@folks), 'New table.');
 		ok($source->new_table(@favorites), 'Delete table.');

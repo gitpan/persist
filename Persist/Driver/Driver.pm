@@ -4,7 +4,7 @@ use 5.008;
 use strict;
 use warnings;
 
-our ( $VERSION ) = '$Revision: 1.3 $' =~ /\$Revision:\s+([^\s]+)/;
+our ( $VERSION ) = '$Revision: 1.4 $' =~ /\$Revision:\s+([^\s]+)/;
 
 =head1 NAME
 
@@ -47,9 +47,54 @@ directories, memory structures, file structures, etc.
 Implementors should never call the C<SUPER> version of any method in this
 package as they are all defined to die with an error message.
 
+=head2 CHANGES FOR 0.5.0
+
+As of the 0.5.0 release of Persist, the way drivers are written has changed.
+This change has been made for reasons of flexibility. Instead of taking
+positional paramters, all driver arguments will be passed in hyphen-named
+format. This will allow features to be added more easiler in the future.
+
+=head2 NOTATION
+
+Before getting into the method descriptions, a discussion on notation is
+required. Arguments are passed to driver methods using a hyphen-named parameter
+passing format--one that is used in a number of important Perl packages.
+
+Basically, each method that takes arguments, accepts them in a single hash,
+which is always called C<%args> in this documentation. Then a list of arguments
+is shown in the description of the method. The descriptions will give a
+general indication of the base-type required and the name of the argument,
+along with noting whether the argument is optional or not (a parameter is
+required unless otherwise noted).
+
+For example, if there were a method "foo" described with these parameters:
+
 =over
 
-=item $driver = new Persist::Driver(@construct_args)
+=item $foo
+
+Some foo.
+
+=item @bar (optional)
+
+Some bar.
+
+=back
+
+Then, the method "foo" requires a scalar value passed as "-foo" and may have
+a parameter "-bar" that takes array reference. Thus, this could be a legal call
+for this fictional method:
+
+  $driver->foo(-foo => "baz", -bar => [ 1, 2, 3 ]);
+
+Make sure to read the details of the parameter as it may provide further
+stipulations on the type.
+
+=head2 METHODS
+
+=over
+
+=item $driver = new Persist::Driver(%args)
 
 The implementation may define any arguments it likes to be passed to the
 constructor. What the constructor does is completely up to the implementation.
@@ -71,7 +116,7 @@ sub is_dba {
 	die "Must be implemented by driver.";
 }
 
-=item @connect_args = $driver-E<gt>new_source(@create_args)
+=item @connect_args = $driver-E<gt>new_source(%args)
 
 Creates a new data source if the current user is capable. It returns the
 arguments required to connect to this new database. The arguments that must be
@@ -83,7 +128,7 @@ sub new_source {
 	die "Must be implemented by driver.";
 }
 
-=item $success = $driver-E<gt>delete_source(@delete_args)
+=item $success = $driver-E<gt>delete_source(%args)
 
 Deletes an existing data source if the current user is capable. It returns true
 upon success. The arguments that must be passed to delete the source are driver
@@ -99,7 +144,7 @@ sub delete_source {
 # necessary for creating/deleting/connecting to sources. Perhaps something
 # similar to a table definition to take advantage of our metadata system.
 
-=item $success = $driver-E<gt>create_table($name, \@columns, \@indexes)
+=item $success = $driver-E<gt>create_table(%args)
 
 Creates a new ``table'' in the data source. Even if the data source is
 not relational, the closest approximation to a table should be used.
@@ -114,6 +159,29 @@ Even though a driver is not required to enforce them. It must, however,
 remember the settings for the purposes of the C<indexes> method and for
 providing functionality for joining tables. 
 
+The arguments C<$args> accepted are:
+
+=over
+
+=item $table
+
+The name of the table to create.
+
+=item @columns
+
+The column definition specification. This will be a series of keyword/value
+pairs. Each key is the name of the column and each value is the datatype
+descriptor. See L<Persist::Source> for details. This will always be passed
+as an array reference, even though the front-end allows for this argument
+to be a hash reference.
+
+=item @indexes
+
+Specifies a list of indexes to add to this table. See L<Persist::Source> for
+details.
+
+=back
+
 The method returns true on successful table creation.
 
 =cut
@@ -122,11 +190,23 @@ sub create_table {
 	die "Must be implemented by driver.";
 }
 
-=item $success = $driver-E<gt>delete_table($name)
+=item $success = $driver-E<gt>delete_table(%args)
 
-Deletes the table named by C<$name>. Returns true upon successful deletion of
-the table (or equivalent object in the store). This should effectively
-annihilate the description of the table and all data associated with it.
+This operation will annihilate the table description and all data associated
+with it.
+
+This method takes these arguments in C<%args>:
+
+=over
+
+=item $table
+
+The name of the table to delete.
+
+=back
+
+Returns true upon successful deletion of the table (or equivalent object in the
+store).
 
 =cut
 
@@ -139,18 +219,32 @@ sub delete_table {
 Returns a list of all the table names in the data source. This may return tables
 that were not created by the source (such as preexisting data), but should not
 return system tables or the equivalent.
+
 =cut
 
 sub tables {
 	die "Must be implemented by driver.";
 }
 
-=item $handle = $driver-E<gt>open_table($table [, $filter ] )
+=item $handle = $driver-E<gt>open_table(%args)
 
-Returns a handle which may be used to fetch information out of a single table
-in the database. The name of the table is specified in the C<$table> argument.
-The optional C<$filter> argument may be used to narrow the results. See
+Returns a handle which may be used to fetch information out of a single table in
+the database.
+
+The possible arguments C<%args> are:
+
+=over
+
+=item $table
+
+The name of the table.
+
+=item $filter (optional)
+
+The C<$filter> argument may be used to narrow the results. See
 L<Persist::Filter/FILTERS> for details on the format of C<$filter>.
+
+=back
 
 =cut
 
@@ -158,16 +252,23 @@ sub open_table {
 	die "Must be implemented by driver.";
 }
 
-=item $handle = $driver-E<gt>open_join(\@tables [, \@filters ] )
+=item $handle = $driver-E<gt>open_join(%args)
 
-Returns a handle which may be used to fetch information out of a group of tables
-that are joined according to their C<LINK> indexes. The array C<@tables> is a
-list of table names to join. If the list of tables contains a circular set of
-C<LINK> constraints, then latter tables will not be completely joined.
-Otherwise, we might create a set of constraints that cannot be or can barely be
-satisfied. It is possible to join two unrelated tables, but doing so will create
-a cross-product of the records, which is generally undesirable for performance
-reasons.
+Creates a handle to refer to for iterating over a selection of data in a set of
+tables.
+
+=over
+
+=item @tables
+
+The array C<@tables> is a list of table names to join. If the list of tables
+contains a circular set of C<LINK> constraints, then latter tables will not be
+completely joined.  Otherwise, we might create a set of constraints that cannot
+be or can barely be satisfied. It is possible to join two unrelated tables, but
+doing so will create a cross-product of the records, which is generally
+undesirable for performance reasons.
+
+=item @filters (optional)
 
 In addition to the C<LINK> constraints, the user may specify one or more
 filters. The C<@filters> array contains one filter per table in C<@tables> and
@@ -178,24 +279,42 @@ value.
 
 See L<Persist::Filter/FILTERS> for details on the format of the filters.
 
+=back
+
+Returns a handle which may be used to fetch information out of a group of tables
+that are joined according to their C<LINK> indexes. 
+
 =cut
 
 sub open_join {
 	die "Must be implemented by driver.";
 }
 
-=item $handle = $driver-E<gt>open_explicit_join(\@tables, \@as_exprs [, $filter ] )
+=item $handle = $driver-E<gt>open_explicit_join(%args)
 
-Returns a handle which may be used to fetch information out of a group of tables
-that are joined according to the explicit information given by the user. The
-array C<@tables> is a list of table name aliases followed by table names of
-those tables to join. The array C<@as_exprs> contains the expressions used to
-join each set of tables. Tables are joined in the order given with each
-C<@as_exprs> expression in the I<n>th place joining the table in the (I<n>+1)th
-with all tables prior to and including the I<n>th. The table name aliases should
-be used in the expressions during join. Expressions that are set to C<undef>
-should either result in an implicit join or a full cross-product of the
-relations--depending upon the driver implementation.
+Creates a handle to refer to for iterating over a selection of data in a set of
+tables whose joining is explicitly defined.
+
+This method accepts this arguments in C<%args>:
+
+=over
+
+=item @tables
+
+The array C<@tables> is a list of table name aliases followed by table names of
+those tables to join.
+
+=item @on_exprs
+
+The array C<@on_exprs> contains the expressions used to join each set of tables.
+Tables are joined in the order given with each C<@on_exprs> expression in the
+I<n>th place joining the table in the (I<n>+1)th with all tables prior to and
+including the I<n>th. The table name aliases should be used in the expressions
+during join. Expressions that are set to C<undef> should either result in an
+implicit join or a full cross-product of the relations--depending upon the
+driver implementation--so it's best to just specify it!
+
+=item $filter (optional)
 
 In addition to the explicit constraints, the user may specify a filter.  The
 C<$filter> string contains a filter expression and should use the table name
@@ -204,17 +323,36 @@ aliasees in C<@tables>.
 See L<Persist::Filter/FILTERS> for details on the format of the filters and AS
 expressions.
 
+=back
+
+Returns a handle which may be used to fetch information out of a group of tables
+that are joined according to the explicit information given by the user.
+
 =cut
 
 sub open_explicit_join {
 	die "Must be implemented by driver."
 }
 
-=item $rows = $driver-E<gt>insert($name, \%values)
+=item $rows = $driver-E<gt>insert(%args)
 
-Inserts a new row into the table named C<$name>. The hash C<%values> maps
-column names (keys) to values (values). The result is the number of rows
-modified (should always be one on success).
+Inserts a new row into a table.
+
+The arguments C<%args> accepted are:
+
+=over
+
+=item $table
+
+The name of the table to insert into.
+
+=item %values
+
+The hash C<%values> maps column names (keys) to values (values).
+
+=back
+
+The result is the number of rows modified (should always be one on success).
 
 =cut
 
@@ -222,20 +360,38 @@ sub insert {
 	die "Must be implemented by driver.";
 }
 
-=item $rows = $driver-E<gt>update($name, \%set [, $filter [,
-\@bindings ] ] )
+=item $rows = $driver-E<gt>update(%args)
 
-Updates zero or more entries in the table named C<$name>. The hash C<%set> maps
-column names (keys) to values (values). The optional filter specifies the
-criteria by which rows will be matched to determine whether or not to update
-them. The final optional bindings array is an array of bindings values.
+Updates zero or more entries in a table.
+
+The arguments C<%args> accepted are:
+
+=over
+
+=item $table
+
+The name of the table to update.
+
+=item %set
+
+The hash C<%set> maps column names (keys) to values (values).
+
+=item $filter (optional)
+
+The optional filter specifies the criteria by which rows will be matched to
+determine whether or not to update them.
 
 B<WARNING:> An undefined filter will update all rows.
 
-Returns the number of rows affected.
+See L<Persist::Filter/FILTERS> for details on the format of the filter.
 
-See L<Persist::Filter/FILTERS> for details on the format of the filter and
-bindings.
+=item @bindings
+
+The final optional bindings array is an array of bindings values.
+
+=back
+
+Returns the number of rows affected.
 
 =cut
 
@@ -248,19 +404,34 @@ sub update {
 	die "Must be implemented by driver.";
 }
 
-=item $rows = $driver-E<gt>delete($name [, $filter [, \@bindings ] ] )
+=item $rows = $driver-E<gt>delete(%args)
 
-Deletes zero or more entries from the table named C<$name>. The
-optional filter specifies the criteria by which rows will be matched
-for deletion. The final optional bindings argument is an array of
-binding values
+Deletes zero or more entries from a table.
+
+The arguments C<%arg> accepted are:
+
+=over
+
+=item $table
+
+The name of the table to delete records from.
+
+=item $filter (optional)
+
+The optional filter specifies the criteria by which rows will be matched
+for deletion.
 
 B<WARNING:> An undefined filter will delete all rows from the table.
 
-Returns the number of rows affected.
+See L<Persist::Filter/FILTERS> for details on the format of the filter.
 
-See L<Persist::Filter/FILTERS> for details on the format of the filter and
-bindings.
+=item @bindings (optional)
+
+The final optional bindings argument is an array of binding values.
+
+=back
+
+Returns the number of rows affected.
 
 =cut
 
@@ -268,11 +439,23 @@ sub delete {
 	die "Must be implemented by driver.";
 }
 
-=item %columns = $driver-E<gt>columns($name)
+=item %columns = $driver-E<gt>columns(%args)
 
-Returns the column definition used to define the table. This must work for
-tables created by the driver and also for any others that are listed by
-C<tables>.
+Fetches information about the columns of a table. This must work for all tables
+created by the driver. If the driver lists a table in C<tables>, then it must be
+able to list columns for the table here.
+
+The arguments C<%args> accepted are:
+
+=over
+
+=item $table
+
+The name of the table to examine the columns of.
+
+=back
+
+Returns the column definition used to define the table.
 
 =cut
 
@@ -280,11 +463,23 @@ sub columns {
 	die "Must be implemented by driver.";
 }
 
-=item @indexes = $driver-E<gt>indexes($name)
+=item @indexes = $driver-E<gt>indexes(%args)
 
-Returns the index definition used to define the table. This must work for
-tables created by the driver and also for any others that are listed by
-C<tables>.
+Fetches information about the indexes of a table. This must work for all tables
+created by the driver. If the driver lists a table in C<tables>, then it must
+be able to list columns for the table here.
+
+The arguments C<%args> accepted are:
+
+=over
+
+=item $table
+
+The name of the table to examine the columns of.
+
+=back
+
+Returns the index definition used to define the table.
 
 =cut
 
@@ -292,7 +487,20 @@ sub indexes {
 	die "Must be implemented by driver.";
 }
 
-=item $row = $driver-E<gt>first($handle)
+=item $row = $driver-E<gt>first(%args)
+
+Fetches the first row from a table.
+
+The arguments C<%args> accepted are:
+
+=over
+
+=item $handle
+
+This is a handle returned by a call to C<open_table>, C<open_join>,
+or C<open_explicit_join>.
+
+=back
 
 Returns the first record found according to the given C<$handle> that was
 created with a call to C<open_table> or C<open_join> or C<open_explicit_join>.
@@ -308,7 +516,20 @@ sub first {
 	die "Must be implemented by driver.";
 }
 
-=item $row = $driver-E<gt>next($handle)
+=item $row = $driver-E<gt>next(%args)
+
+Fetches the next row from a table.
+
+The arguments C<%args> accepted are:
+
+=over
+
+=item $handle
+
+This is a handle returned by a call to C<open_table>, C<open_join>, or
+C<open_explicit_join>.
+
+=back
 
 Returns the next record found according to the given C<$handle> that was
 created with a call to C<open_table> or C<open_join> C<open_explicit_join>. The
@@ -325,14 +546,31 @@ sub next {
 	die "Must be implemented by driver.";
 }
 
-=item $value = $driver-E<gt>sequence_value($table, $column)
+=item $value = $driver-E<gt>sequence_value(%args)
+
+$table, $column)
 
 In the case of C<AUTONUMBER> columns, this method returns the last inserted
-numeric value into column C<$column> of table C<$table>. If no I<recent> insert
-has been made or the column is not of type C<AUTONUMBER> an exception will be
-thrown. Whether or not the last insert into a table is recent will depend upon
-back-end. However, it should generally be safe to assume that an insertion made
-since the current connection is recent.
+numeric value into a column.  If no I<recent> insert has been made or the column
+is not of type C<AUTONUMBER> an exception will be thrown. Whether or not the
+last insert into a table is recent will depend upon back-end. However, it should
+generally be safe to assume that an insertion made since the current connection
+is recent.
+The arguments C<%args> accepted are:
+
+=over
+
+=item $table
+
+The table the C<AUTONUMBER> column belongs to.
+
+=item $column
+
+The column of the table to fetch the last sequence value from.
+
+=back 
+
+Returns the last, recently inserted, sequence value for the column.
 
 =cut
 

@@ -5,4 +5,6 @@ WriteMakefile(
 	NAME			=> 'Persist',
 	VERSION_FROM	=> 'Persist.pm',
 	AUTHOR			=> 'Andrew Sterling Hanenkamp <hanenkamp@users.sourceforge.net>',
+    MAN3PODS        => { 'Overview.pod' => '$(INST_MAN3DIR)/Persist::Overview.3pm' },
+    PM              => { 'Overview.pod' => '$(INST_LIBDIR)/Persist/Overview.pod' },
 );

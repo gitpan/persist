@@ -1,0 +1,376 @@
+=head1 NAME
+
+Persist::Overview - An overview of the Persist Perl extension
+
+=head1 SYNOPSIS
+
+  use Persist qw(:constants);
+  use Persist::Source;
+
+  # Connect to my database for C.S. Lewis Space Trilogy info
+  my $source = new Persist::Source(
+          'Persist::Driver::DBI::PostgreSQL',
+          -database => 'space',
+          -username => 'ransom',
+          -password => 'perelandra');
+
+  # Create a table for planets
+  $source->new_table('planets', [
+          planetid      => [ AUTONUMBER ],
+          solar_name    => [ VARCHAR, 20 ],
+          greek_name    => [ VARCHAR, 20 ],
+          bent          => [ BOOLEAN ], ], [
+          [ PRIMARY, [ 'planetid' ] ],
+          [ UNIQUE, [ 'name' ] ], ]);
+
+  # Create a table for beings created in the image of God
+  $source->new_table('hnau', [
+          planetid      => [ INTEGER ],
+          name          => [ VARCHAR, 20 ], ], [
+          [ PRIMARY, [ 'name' ] ],
+          [ LINK, [ 'planetid' ], 'planets', [ 'planetid' ] ], ]);
+
+
+  # Insert some planet records
+  my $planets = $source->planets;
+  $planets->insert;
+  $planets->solar_name('Malacandra');
+  $planets->greek_name('Mars');
+  $planets->bent(0);
+  $planets->save;
+  my $malacandra_id = $planets->last_planetid;
+
+  $planets->insert({solar_name => 'Thulcandra', greek_name => 'Earth', bent => 1});
+  $planets->save;
+  my $thulcandra_id = $planets->last_planetid;
+
+  $planets->insert_now({solar_name => 'Perelandra', greek_name => 'Venus', bent => 0});
+  my $perelandra = $planets->last_planetid;
+
+  # Insert some Hnau records
+  my $hnau = $source->hnau;
+  $hnau->insert_now({planetid => $thulcandra_id, name => 'Human'});
+  $hnau->insert_now({planetid => $malacandra_id, name => 'Hrossa'});
+  $hnau->insert_now({planetid => $malacandra_id, name => 'Sorn'});
+  $hnau->insert_now({planetid => $malacandra_id, name => 'Pfifltriggi'});
+  $hnau->insert_now({name => 'Eldil'});
+
+  # Maybe we should refer to the Eldil as Eldila
+  $hnau->update({name => 'Eldilla'}, "name = 'Eldil'"});
+
+  # Or maybe they don't belong at all since they are greater than Hnau and live
+  # in the Field of Arbol instead of on planets
+  $hnau->delete("name = 'Eldilla'");
+
+  # Name the planets each live on:
+  my $joined = $source->join([ 'planets', 'hnau' ]);
+  while ($joined->next) {
+      print "The ",$joined->name," live on ",$joined->solar_name,
+          " known to us as ",$joined->greek_name,".\n";
+  }
+
+=head1 PREFACE
+
+This document is a work in progress and, as of this writing, is woefully
+incomplete. It should provide a relatively quick overview and pointers to where
+to look elsewhere in the documentation for help.  This document is meant to
+provide a good starting place for learning about Persist and geting started
+using it.
+
+=head1 DESCRIPTION
+
+Persist provides a portable API to access data stored in a database. This API
+seeks to make it possible to write components that are write-once/run-everywhere
+reusable across storage back-ends. Thus, a component can be written to run under
+PostgreSQL and then be used on MySQL or a CSV-based filesystem database without
+making any changes to the component code.
+
+The system maintains it's own system of drivers which provide a basic, low-level
+interface layer with the underlying storage system. These drivers implement a
+specific contract and are required to provide certain services. The services
+required are those which are necessary to maintain a unified front-end
+interface. Some features, such as referential integrity, are suggested, but are
+not required. The missing features may result in somewhat different behavior
+between drivers, but, in general, should not require code written to use the
+front-end API to change.
+
+The front-end API provides a simple set of classes which provide a high-level
+interface layer to your application. Perl scripts and modules written to use
+this high-level API should not need to change at all when changing back-end
+drivers. The only place where code may need to change is in the initial
+establishment of connections and in the creation and deletion of new schemas.
+Some work is in progress to see to it that these changes are both minimized and
+altered so that well-designed systems should be able to cope with these changes
+without altering a single line of code.
+
+=head1 GETTING STARTED
+
+The place to get started is the front-end API. The core of this API is the
+L<Persist::Source> package. This package is used to establish a connection to
+a back-end storage system and then to manipulate the storage system. This
+package then relies upon L<Persist::Join> and L<Persist::Table> to handle
+manipulation data related to specific tables directly.
+
+=head2 MIXED POSITIONAL/NAMED PARAMETERS
+
+As of version 0.5.0 of Persist, arguments that are passed to methods may be
+passed using a mixed positional/named parameter passing style. This means that
+parameters may be passed by the order they are described in the documentation,
+or given by name using named pairs of arguments. Further, the positional style
+may be mixed with the named style for flexibility.
+
+For example, to create a table we can call:
+
+  $source->new_table(
+      'mytable', { x => [ AUTONUMBER ] }, [ [ PRIMARY, [ 'x' ] ]);
+
+This demonstrates the simple positional parameter passing style. The first
+parameter corresponds to the "table" variable, the second to "columns" variable,
+and the third to the "indexes" variable. Instead, we might use the named
+parameter passing syntax like this:
+
+  $source->new_table(
+      -table    => 'mytable',
+      -columns  => { x => [ AUTONUMBER ] },
+      -indexes  => [ [ PRIMARY, [ 'x' ] ],
+  );
+
+Finally, we can mix both types so long as we place the positional parameters
+first and the named paramters second. Once a named parameter has been given, all
+the following parameters must be named parameters. Thus, we might pass the table
+argument as a positional parameter and the others as named:
+
+  $source->new_table('mytable',
+      -columns  => { x => [ AUTONUMBER ] },
+      -indexes  => [ [ PRIMARY, [ 'x' ] ],
+  );
+
+The named parameters don't have to be in order (otherwise, what would be the
+point?) and optional parameters can be left out of the named list. This way, an
+optional parameter could be skipped altogether--rather than specifying it as
+C<undef> and adding to the line noise.
+
+=head2 NOTATIONAL CONVENTIONS
+
+Throughout Persist there are two styles of argument passing used. For drivers,
+all arguments are passed using a named syntax. For the rest of the method calls,
+mixed positional/named syntax is offered. Each of these have their own notation.
+
+=head3 NAMED PARAMETERS
+
+Named parameters are documented only the drivers. Basically, each method that
+takes arguments, accepts them in a single hash, which is always called C<%args>
+in this documentation. Then a list of arguments is shown in the description of
+the method. The descriptions will give a general indication of the base-type
+required and the name of the argument, along with noting whether the argument is
+optional or not (a parameter is required unless otherwise noted).
+
+For example, if there were a method C<foo>, it might be described as:
+
+=over
+
+=item $results = $object-E<gt>foo(%args)
+
+Method C<foo> does some pretty nifty stuff.
+
+=over
+
+=item $foo
+
+Some foo.
+
+=item @bar (optional)
+
+Some bar.
+
+=back
+
+Method C<foo> returns real results.
+
+=back
+
+Then, the method C<foo> requires a scalar value passed as "-foo" and may have
+a parameter "-bar" that takes array reference. Thus, this could be a legal call
+for this fictional method:
+
+  $driver->foo(-foo => "baz", -bar => [ 1, 2, 3 ]);
+
+Make sure to read the details of the parameter as it may provide further
+stipulations on the type.
+
+=head3 MIXED PARAMETERS
+
+The documentation for describing methods accepting mixed parameter lists looks
+conventional. However, every method should be able to take a mixed parameter
+list.
+
+As an example, let's take a similar C<foo> method using mixed parameter passing
+convention:
+
+=over
+
+=item $results = $object-E<gt>foo($foo [, \@bar ])
+
+Method C<foo> does some nifty stuff.
+
+=over
+
+=item $foo
+
+Some foo.
+
+=item @bar (optional)
+
+Some bar.
+
+=back
+
+Method C<foo> returns real results.
+
+=back
+
+The major difference between this and the named only passing style is the
+parameter list isn't just C<%args>. I use the square brackets to show when
+parameters are optional. In addition, options will be shown as "(optional)" in
+the documentation too.
+
+As an example, this C<foo> might be called as:
+
+  $object->foo('baz', -bar => [ 1, 2, 3 ]);
+
+Or it could be called with any combination of positional and named parameters so
+long as there are no positional parameters after the first named parameter.
+I<NOTE: Not every subroutine definition will have a list describing the
+parameters, some may just describe them inline.>
+
+=head1 HISTORY
+
+My current major work (at least as my own hobby) is the L<Contentment>
+Content Management System. This is a componentized system based upon the idea
+that there should be a strict separation between the roles of web programmer and
+user. The goals of that system include portability across platforms, protocols,
+and databases.
+
+Initially, Persist was created as an internal project of Contentment. However,
+as Persist grew it became a full-blown project in it's own right, so I split the
+projects. However, the major tool I use Persist with is still Contentment, so
+much of it's features are still driven by the needs of Contentment.
+
+=head1 SIMILAR WORKS
+
+These are similar works that I am aware of. Some are very good, but I have
+chosen to develop this project independently because of various important
+differences between them and this project. I recommend looking into these
+projects as well as this one before making a final decision on what you would
+use.
+
+=head2 Alzabo
+
+L<Alzabo> is probably the tool most similar to Persist. In addition, this tool
+is also very mature, powerful, and featureful. I had for some time deliberated
+over whether or not to use Alzabo, instead of "reinventing the wheel." Probably
+the nicest feature of this tool is the ability to modify an existing schema and
+then merge the changes with an older version of an installed schema. I may
+"borrow" that feature at some point--using the best of Open Source practices, of
+course. This tool also provides caching, a very complete query system, and a GUI
+tool for managing schema files.
+
+I chose not to use this tool for a couple major reasons. First, schema creation
+itself isn't very much fun in Alzabo, IMO. Also, there is an explicit decoupling
+between schema creation and data access that I'm not particularly fond of. The
+final clincher is that it doesn't support anything but RDBMS back-ends. I wanted
+something a bit more flexible.
+
+=head2 Persistent
+
+L<Persistent> is an older tool, which I noted before any other. This tool has
+apparently become abandonware. I haven't been able to contact the author, but
+this tool is very similar to that which I set out to do initially with Persist.
+(In fact, the first naming scheme used was Persistent, but I changed it to avoid
+clashing with this tool.) Persistent provides flexible table management and a
+reasonable API for data manipulation.
+
+However, it has two major shortfalls (as far as my goals are concerned): it uses
+back-end dependent filtering languages and has no support for schema management
+(a.k.a. database instance management).
+
+=head2 Others
+
+L<Class::DBI> provides a relatively nice class-based front end to tables, but
+not much in the way of schema or table management.
+
+I really like the flexibility and choices that Perl offers. CPAN is a wonderful
+resource for finding projects to do what you looking for and there are so many
+good choices in some areas--like this one. If you know of a tool that provides
+serialization, marshalling, or similar cross-database support and let me know,
+I'll add it to future revisions of this document.
+
+=head1 LITERARY CREDITS
+
+Many Perl authors have chosen to honor, through their code examples, the
+literature of J.R.R. Tolkein, Douglas Adams, and other great authors. Therefore,
+I chose to do the same, but with one of my favorite authors, C.S. Lewis. Lewis
+was a contemporary and friend of Tolkein and each admired (though sometimes
+debated) each other's work. 
+
+Besides the I<Chronicles of Narnia>, C.S. Lewis also wrote another allegorical
+fictional work known as I<The Space Trilogy>. The three books in this trilogy
+are I<Out of the Silent Planet>, I<Perelandra>, and I<That Hideous Strength>.
+This books provide some of C.S. Lewis' imaginings about space travel, life on
+other planets (specifically Mars and Venus), and the goings on of the greater
+Universe--within which we humans are completely insignificant in some ways, but
+at the center in others.
+
+I think these books provide an interesting look at some of C.S. Lewis' religious
+views and philosophy. He attempts to allegorically demonstrate the human
+condition as he understands it. He also examines the roots of humanity and what
+life might have been like around the time of the fall of man. There are a number
+of Christian spritual undertones, especially those involving what we Christians
+would refer to as "spiritual warfare." His sensationalized representation of
+angels and demons have obviously been followed closely by other Christian
+authors.
+
+I recommend these books very highly. These books aren't for the faint of heart,
+especially since some themes might be a little frightening. They also take a
+little effort to wade through since Lewis' style is a little verbose--these
+books are similar to Tolkein in that respect. But, if you're in the mood for a
+challenging read that will be stimulating, I have really enjoyed going through
+them--er, at least I've made it through the first two and am working my way
+through the third, as of this writing.
+
+=head1 AUTHOR
+
+Andrew Sterling Hanenkamp, E<lt>sterling@users.sourceforge.netE<gt>
+
+=head1 LICENSE
+
+  Copyright (c) 2003, Andrew Sterling Hanenkamp
+  All rights reserved.
+
+  Redistribution and use in source and binary forms, with or without 
+  modification, are permitted provided that the following conditions 
+  are met:
+
+    * Redistributions of source code must retain the above copyright 
+      notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright 
+      notice, this list of conditions and the following disclaimer in 
+      the documentation and/or other materials provided with the 
+      distribution.
+    * Neither the name of the Persist nor the names of its contributors
+      may be used to endorse or promote products derived from this
+      software without specific prior written permission.
+
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
+  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
+  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS 
+  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE 
+  COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, 
+  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
+  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; 
+  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT 
+  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN 
+  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
+  POSSIBILITY OF SUCH DAMAGE.
+

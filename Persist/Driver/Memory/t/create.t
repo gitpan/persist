@@ -12,15 +12,15 @@ ok($driver->create_table(@favorites), 'Create a table.');
 ok($tables{folks}, 'Folks exists.');
 ok($tables{favorites}, 'Favorites exists.');
 
-%results = $driver->columns('folks');
-is_deeply(\%results, $folks[1], 'Correct column structure.');
-%results = $driver->columns('favorites');
-is_deeply(\%results, $favorites[1], 'Correct column structure.');
+%results = $driver->columns(-table => 'folks');
+is_deeply(\%results, +{ @{$folks[3]} }, 'Correct column structure.');
+%results = $driver->columns(-table => 'favorites');
+is_deeply(\%results, +{ @{$favorites[3]} }, 'Correct column structure.');
 
-@results = $driver->indexes('folks');
-is_deeply(\@results, $folks[2], 'Correct index structure.');
-@results = $driver->indexes('favorites');
-is_deeply(\@results, $favorites[2], 'Correct index structure.');
+@results = $driver->indexes(-table => 'folks');
+is_deeply(\@results, $folks[5], 'Correct index structure.');
+@results = $driver->indexes(-table => 'favorites');
+is_deeply(\@results, $favorites[5], 'Correct index structure.');
 
-ok($driver->delete_table(@favorites), 'Delete a table.');
-ok($driver->delete_table(@folks), 'Delete a table.');
+ok($driver->delete_table(-table => 'favorites'), 'Delete a table.');
+ok($driver->delete_table(-table => 'folks'), 'Delete a table.');

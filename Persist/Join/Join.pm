@@ -9,7 +9,7 @@ use Persist::Tabular;
 our @ISA = qw(Persist::Tabular);
 
 our $AUTOLOAD;
-our ( $VERSION ) = '$Revision: 1.4 $' =~ /\$Revision:\s+([^\s]+)/;
+our ( $VERSION ) = '$Revision: 1.5 $' =~ /\$Revision:\s+([^\s]+)/;
 
 =head1 NAME
 
@@ -60,20 +60,20 @@ sub new {
 	$self;
 }
 
-=item $join = $source->explicit_join($tables, $as_exprs, $filter)
+=item $join = $source->explicit_join($tables, $on_exprs, $filter)
 
 See L<Persist::Source> for details.
 
 =cut
 
 sub new_explicit {
-	my ($class, $driver, $tables, $as_exprs, $filter) = @_;
+	my ($class, $driver, $tables, $on_exprs, $filter) = @_;
 
 	my $self = bless {}, ref $class || $class;
 	$self->{-explicit} = 1;
 	$self->{-driver} = $driver;
 	$self->{-tables} = $tables;
-	$self->{-as_exprs} = (ref $as_exprs ? $as_exprs : [ $as_exprs ]);
+	$self->{-on_exprs} = (ref $on_exprs ? $on_exprs : [ $on_exprs ]);
 	$self->{-filter} = $filter;
 
 	$self;
@@ -88,11 +88,16 @@ sub _open {
 
 	if ($reset or not $self->{-handle}) {
 		if ($self->{-explicit}) {
-			$self->{-handle} = $self->{-driver}->open_explicit_join
-					($self->{-tables}, $self->{-as_exprs}, $self->{-filter})
+			$self->{-handle} = $self->{-driver}->open_explicit_join(
+				-tables		=> $self->{-tables},
+				-on_exprs	=> $self->{-on_exprs},
+				-filter		=> $self->{-filter},
+			);
 		} else {
-			$self->{-handle} = $self->{-driver}->open_join
-					($self->{-tables}, $self->{-filter});
+			$self->{-handle} = $self->{-driver}->open_join(
+				-tables		=> $self->{-tables},
+				-filter		=> $self->{-filter},
+			);
 		}
 	}
 }

@@ -7,6 +7,11 @@ use warnings;
 use Carp;
 use Parse::RecDescent;
 
+use Getargs::Mixed;
+
+# TODO Add a direct date syntax instead of using the rather klugey
+# string-magically-becomes-a-date-when-needed semantics.
+
 =head1 NAME
 
 Persist::Filter - Function for parsing filters
@@ -229,7 +234,7 @@ our @EXPORT = qw(
 	parse_filter unparse_filter
 );
 
-our ($VERSION) = '$Revision: 1.6 $' =~ /\$Revision:\s+(\S+)/;
+our ($VERSION) = '$Revision: 1.9 $' =~ /\$Revision:\s+(\S+)/;
 
 =head2 AST CLASS HEIRARCHY
 
@@ -249,6 +254,8 @@ class isn't used directly. It provides three methods for every AST object.
 
 package Persist::Filter::AST;
 
+use Getargs::Mixed;
+
 # =item $ast = Persist::Filter::AST->new(@args)
 #
 # Creates an AST object containing a blessed array referencing the given array
@@ -259,11 +266,12 @@ sub new {
 	bless [ @args ], ref $class || $class;
 }
 
-=item $ast->remap(\&subroutine)
+=item $ast->remap(\&code)
 
 This is the most fundamental of the tree-walking functions. It calls the given
 subroutine on every node in the tree, including the current node. Each time it
-is called the subroutine is passed a reference to the node as the argument.
+is called the subroutine C<&code> is passed a reference to the node as the
+argument.
 
 This method performs the tree-walking operation using a non-recursive algorithm
 so it should be relatively efficient.
@@ -271,7 +279,8 @@ so it should be relatively efficient.
 =cut
 
 sub remap {
-	my ($ast, $code) = @_;
+	my ($ast, %args) = parameters('self', [qw(code)], @_);
+	my $code = $args{code};
 
 	my @stack = ( $ast );
 	while (@stack) {
@@ -286,19 +295,20 @@ sub remap {
 	}
 }
 
-=item $ast->remap_on($type, \&subroutine)
+=item $ast->remap_on($type, \&code)
 
 This method does essentially the same thing as C<remap> but only calls the
 given subroutine on code that is equal to or a decendent of the given C<$type>.
 That is, C<UNIVERSAL::isa> is called on each AST object and C<$type> to
-determine when C<&subroutine> should be called.
+determine when C<&code> should be called.
 
 This is performed with a non-recursive algorithm for efficiency.
 
 =cut
 
 sub remap_on {
-	my ($ast, $type, $code) = @_;
+	my ($ast, %args) = parameters('self', [qw(type code)], @_);
+	my ($type, $code) = @args{qw(type code)};
 
 	my @stack = ( $ast );
 	while (@stack > 0) {
@@ -315,11 +325,13 @@ sub remap_on {
 	}
 }
 
-=item $filter = $ast->unparse
+=item $filter = $ast->unparse(@args)
 
 This is just a shorthand for:
 
-  $filter = unparse_filter($ast);
+  $filter = unparse_filter(@args);
+
+See C<unparse_filter> for details are arguments passed.
 
 =back
 
@@ -507,16 +519,21 @@ char:		"\\\\'" { $return = "\\\\'" }
 #debug# $::RD_HINT = 1;
 my $parse = Parse::RecDescent->new($grammar);
 
-sub parse_filter($) {
-	my ($filter) = @_;
+# Documentation is above.
+sub parse_filter {
+	my (%args) = parameters([qw(filter)], @_);
+	my ($filter) = $args{filter};
 	$parse->filter($filter)
 }
 
 # QUESTION Is this really as efficient as possible. I know unshift is
 # less efficient than push, but if I use push, I will need to call reverse
 # frequently which will result in a lot of copying anyway.
+#
+# Documentation is above.
 sub unparse_filter($) {
-	my ($ast) = @_;
+	my (%args) = parameters([qw(ast)], @_);
+	my ($ast) = $args{ast};
 
 	my $result;
 	my @stack = ('(', @$ast, ')');

@@ -9,10 +9,13 @@ use Persist ':constants';
 plan tests => 2 unless $skippg;
 plan skip_all => $skippg if $skippg;
 
-@favorites = ( 'favorites',
-	{	favid	=> [ AUTONUMBER ],
+@favorites = (
+	-table => 'favorites',
+	-columns =>
+	[	favid	=> [ AUTONUMBER ],
 		fid		=> [ INTEGER ],
-		name	=> [ VARCHAR, 10 ] },
+		name	=> [ VARCHAR, 10 ] ],
+	-indexes =>
 	[	[ PRIMARY, [ 'favid' ] ],
 		[ UNIQUE, [ 'fid', 'name' ] ],
 		[ LINK, [ 'fid' ], 'folks', [ 'fid' ] ] ]
@@ -30,29 +33,31 @@ eval {
 	$driver->create_table(@favorites);
 
 	for $folk (@folks_data) {
-		$driver->insert('folks', { name => $folk->{name} });
-		$fid = $driver->sequence_value('folks', 'fid');
+		$driver->insert(-table => 'folks', -values => { name => $folk->{name} });
+		$fid = $driver->sequence_value(-table => 'folks', -column => 'fid');
 		for $favorite (@{$folk->{colors}}) {
-			$driver->insert('favorites', { fid => $fid, name => $favorite });
+			$driver->insert(-table => 'favorites', -values => { fid => $fid, name => $favorite });
 		}
 	}
 
 	$sth = $driver->open_join(
+			-tables => 	
 			[ [ 'folks', 'o' ],
 			  [ 'favorites', 'a' ] ],
+			-filters => 
 			[ "name = 'Sterling'", "name = 'green'" ]);
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{o_name} eq 'Sterling' and $row->{a_name} eq 'green', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok(!$row, 'Record test.');
 
 	#$sth = $driver->open_explicit_join(
 	#				[ 'o', [ 'o' => 'folks' ], 'a', [ 'a' => 'favorites' ] ], 
 	#				[ "o.fid = a.fid" ],
 	#				"o.name = 'Sterling' and a.name = 'green'");
-	#$row = $driver->next($sth);
+	#$row = $driver->next(-handle => $sth);
 	#ok($row->{o_name} eq 'Sterling' and $row->{a_name} eq 'green', 'Record test.');
-	#$row = $driver->next($sth);
+	#$row = $driver->next(-handle => $sth);
 	#ok(!$row, 'Record test.');
 
 };

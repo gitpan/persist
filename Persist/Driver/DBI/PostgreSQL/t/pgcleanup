@@ -3,11 +3,11 @@
 if (defined $driver) {
 	eval {
 		if (grep /favorites/, $driver->tables) {
-			$driver->delete_table('favorites');
+			$driver->delete_table(-table => 'favorites');
 		}
 
 		if (grep /folks/, $driver->tables) {
-			$driver->delete_table('folks');
+			$driver->delete_table(-table => 'folks');
 		}
 	};
 

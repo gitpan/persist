@@ -16,30 +16,30 @@ eval {
 	$driver->create_table(@favorites);
 
 	for $folk (@folks_data) {
-		$driver->insert('folks', { name => $folk->{name}, age => $folk->{age} });
-		$fid = $driver->sequence_value('folks', 'fid');
+		$driver->insert(-table => 'folks', -values => { name => $folk->{name}, age => $folk->{age} });
+		$fid = $driver->sequence_value(-table => 'folks', -column => 'fid');
 		for $favorite (@{$folk->{colors}}) {
-			$driver->insert('favorites', { fid => $fid, color => $favorite });
+			$driver->insert(-table => 'favorites', -values => { fid => $fid, color => $favorite });
 		}
 	}
 
-	$sth = $driver->open_join([ 'folks', 'favorites' ], [ "age > 40" ]);
-	$row = $driver->next($sth);
+	$sth = $driver->open_join(-tables => [ 'folks', 'favorites' ], -filter => [ "age > 40" ]);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Gregg' and $row->{color} eq 'blue', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Rhonda' and $row->{color} eq 'red', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok(!$row, 'Record test.');
 
 	$sth = $driver->open_explicit_join(
-					[ 'o', 'folks', 'a', 'favorites' ], 
-					[ "o.fid = a.fid" ],
-					"o.age > 40");
-	$row = $driver->next($sth);
+					-tables => [ 'o', 'folks', 'a', 'favorites' ],
+					-on_exprs => [ "o.fid = a.fid" ],
+					-filter => "o.age > 40");
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Gregg' and $row->{color} eq 'blue', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Rhonda' and $row->{color} eq 'red', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok(!$row, 'Record test.');
 };
 

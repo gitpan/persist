@@ -1,6 +1,6 @@
 package Persist::Driver::DBI;
 
-use 5.8.0;
+use 5.008;
 use strict;
 use warnings;
 
@@ -10,7 +10,7 @@ use Persist::Filter;
 
 our @ISA = qw(Persist::Driver);
 
-our ( $VERSION ) = '$Revision: 1.8 $' =~ /\$Revision:\s+([^\s]+)/;
+our ( $VERSION ) = '$Revision: 1.10 $' =~ /\$Revision:\s+([^\s]+)/;
 
 =head1 NAME
 
@@ -49,12 +49,22 @@ those interested in internals, feel free to read on.
 
 =over
 
-=item $driver = new Persist::Driver::DBI($dbh)
+=item $driver = new Persist::Driver::DBI(%args)
 
 After connecting to the database in it's new method, the implementor should
 pass the reference to the L<DBI> handle to this new method to instantiate the
 class. The handle will be stored in the ``-database'' key of the blessed hash
 for the object--however, it should be accessed through C<handle>.
+
+The arguments C<%args> accepted are:
+
+=over
+
+=item $database
+
+A DBI database handle.
+
+=back
 
 =cut
 
@@ -62,10 +72,10 @@ for the object--however, it should be accessed through C<handle>.
 # to make sure names are compatible everywhere.
 
 sub new {
-	my ($class, $conn) = @_;
+	my ($class, %args) = @_;
 
 	my $self = bless {}, ref $class || $class;
-	$self->{-database} = $conn;
+	$self->{-database} = $args{-database};
 
 	$self;
 }
@@ -92,28 +102,44 @@ sub tables {
 	$self->handle->tables(undef, undef, '', 'TABLE');
 }
 
-=item $pp_filter = $driver-E<gt>preprocess_filter($aliases, $filter)
+=item $pp_filter = $driver-E<gt>preprocess_filter(%args)
 
-Processes a C<$filter> to turn it into a proper WHERE clause for the DBI
+Processes a filter to turn it into a proper WHERE clause for the DBI
 driver.  The default implementation returns the string unchanged or raises an
 exception if it is not parsable by L<Persist::Filter/parse_filter>.
 Implementations that need to process a filter should look into using
 L<Persist::Filter> as an aid.
 
-This method is called whenever a filter is used in an SQL query. The
-C<$aliases> argument is a hash reference of tables and aliases. Each key is an
-alias to the table the key points to. This allows the preprocessor to perform
-processing based upon the structure of the tables. If the tables aren't
-aliased, then the table names will be both the key and value.
+This method is called whenever a filter is used in an SQL query.
+
+The arguments C<%args> accepted are:
+
+=over
+
+=item $aliases
+
+The C<$aliases> argument is a hash reference of tables and aliases. Each key is
+an alias to the table the key points to. This allows the preprocessor to perform
+processing based upon the structure of the tables. If the tables aren't aliased,
+then the table names will be both the key and value.
+
+=item $filter
+
+The filter to process.
+
+=back
+
+Returns the processed filter.
 
 =cut
 
-sub preprocess_filter($$$) { 
-	if (defined parse_filter($_[2])) { $_[2] } 
-	else { croak "invalid filter $_[2]" }
+sub preprocess_filter { 
+	my ($self, %args) = @_;
+	if (defined parse_filter($args{filter})) { $args{filter} } 
+	else { croak "invalid filter $args{filter}" }
 }
 
-=item $handle = $driver-E<gt>open_table($table [, $filter ] )
+=item $handle = $driver-E<gt>open_table(%args)
 
 Returns a two element array reference. The first element of this reference is
 another array reference containing the name of the table opened. The second
@@ -121,13 +147,17 @@ element is a reference to a L<DBI> statement handle. The filter will be
 processed via C<preprocess_filter> prior to being inserted as the C<WHERE>
 clause of the SQL statement.
 
+See L<Persist::Driver> for a description of the arguments.
+
 =cut
 
 sub open_table {
-	my ($self, $table, $filter) = @_;
+	my ($self, %args) = @_;
+	
+	my ($table, $filter) = @args{qw(-table -filter)};
 
 	my $pp_filter;
-	$pp_filter = $self->preprocess_filter({$table => $table}, $filter) 
+	$pp_filter = $self->preprocess_filter(-aliases => {$table => $table}, -filter => $filter) 
 			if $filter;
 #debug#	print STDERR $pp_filter,"\n";
 
@@ -139,7 +169,7 @@ sub open_table {
 	[ [ $table ], $sth ];
 }
 
-=item $handle = $driver-E<gt>open_join(\@tables [, \@filters ] )
+=item $handle = $driver-E<gt>open_join(%args)
 
 Returns a two element array of the same form returned by C<open_table>, except
 that the first element is an array reference containing the names of all tables
@@ -154,10 +184,13 @@ preprocessing is needed by a derived driver in the future. (The C<ON> clauses
 are simple enough that it is probably reasonable to assume that such
 preprocessing is only likely to add overhead rather than utility.)
 
+See L<Persist::Driver> for a description of the arguments.
+
 =cut
 
 sub open_join {
-	my ($self, $tables, $filter) = @_;
+	my ($self, %args) = @_;
+	my ($tables, $filter) = @args{qw(-tables -filter)};
 
 	# Setup SELECT and column name prefixes
 	my $sql = "SELECT ";
@@ -170,7 +203,7 @@ sub open_join {
 			my ($name, $prefix) = @$table;
 			push @table_schema_names, $name;
 			$table_name{$name} = "t$i";
-			my %flds = $self->columns($name);
+			my %flds = $self->columns(-table => $name);
 			push @aliased, map { "t$i.$_ as ${prefix}_$_" } keys(%flds);
 		} else {
 			push @table_schema_names, $table;
@@ -188,7 +221,7 @@ sub open_join {
 	for my $table (@$tables) {
 		my $name = ref $table ? $table->[0] : $table;
 		
-		my @indexes = $self->indexes($name);
+		my @indexes = $self->indexes(-table => $name);
 		for my $index (@indexes) {
 			if ($index->[0] == LINK) {
 				my $lflds = $index->[1];
@@ -253,8 +286,8 @@ sub open_join {
 
 	if ($filter) {
 		my $where = $self->preprocess_filter(
-				{ reverse(%table_name) },
-				join(" AND ", map { $_ ? $_ : () } @$filter)
+				-aliases => { reverse(%table_name) },
+				-filter => join(" AND ", map { $_ ? $_ : () } @$filter)
 		);
 		$sql .= " WHERE ".$where;
 	}
@@ -265,7 +298,7 @@ sub open_join {
 	[ [ @table_schema_names ], $sth ];
 }
 
-=item $handle = $driver-E<gt>open_explicit_join(\@tables, \@on_exprs [, $filter ] )
+=item $handle = $driver-E<gt>open_explicit_join(%args)
 
 Returns an array reference of the same form returned by C<open_join>.  The
 tables are joined using an C<INNER JOIN> expression with the C<ON> clauses
@@ -279,10 +312,14 @@ by this package definition, it is much more likely that this will have
 problems, but since C<ON> filters are still, generally, very simple, such
 problems aren't expected.
 
+See L<Persist::Driver> for a description of the arguments.
+
 =cut
 
 sub open_explicit_join {
-	my ($self, $tables, $on_exprs, $filter) = @_;
+	my ($self, %args) = @_;
+	
+	my ($tables, $on_exprs, $filter) = @args{qw(-tables -on_exprs -filter)};
 
 	# Setup SELECT and column name prefixes
 	my $sql = "SELECT ";
@@ -295,7 +332,7 @@ sub open_explicit_join {
 			my ($name, $prefix) = @{$tables->[$i+1]};
 			push @table_schema_names, $name;
 			$alias_name{$name} = $alias;
-			my %flds = $self->columns($name);
+			my %flds = $self->columns(-table => $name);
 			push @aliased, map { "$alias.$_ as ${prefix}_$_" } keys(%flds);
 		} else {
 			push @table_schema_names, $tables->[$i+1];
@@ -316,7 +353,7 @@ sub open_explicit_join {
 	# At this point we are SELECTed and FROMed. Now, we see if there is a 
 	# filter for WHEREing.
 	$sql .= " WHERE ".($self->preprocess_filter(
-							{ reverse(%alias_name) },$filter)) if $filter;
+							-aliases => { reverse(%alias_name) }, -filter => $filter)) if $filter;
 
 	# And we are done.
 	my $sth = $self->handle->prepare($sql);
@@ -324,25 +361,25 @@ sub open_explicit_join {
 	[ [ @table_schema_names ], $sth ];
 }
 
-=item $rows = $driver-E<gt>insert($name, \%values)
+=item $rows = $driver-E<gt>insert(%args)
 
-Inserts a new row into the table named C<$name>. The hash C<%values> maps
-column names (keys) to values (values). The result is the number of rows
-modified (should always be one on success).
+See L<Persist::Driver> for a description of this method..
 
 =cut
 
 sub insert {
-	my ($self, $name, $values) = @_;
+	my ($self, %args) = @_;
+	
+	my ($name, $values) = @args{qw(-table -values)};
 
 	my $sql = "INSERT INTO $name (".join(",",keys(%$values)).") ".
-			  "VALUES (".join(",",map { "?" } values(%$values)).")";
+			  "VALUES (".join(",",("?") x scalar(keys(%$values))).")";
+#debug#	print STDERR $sql,"\n";
 	my $sth = $self->handle->prepare($sql);
 	$sth->execute(values(%$values));
 }
 
-=item $rows = $driver-E<gt>update($name, \%set [, $filter [,
-\@bindings ] ] )
+=item $rows = $driver-E<gt>update(%args)
 
 Updates zero or more rows. The filter is processed by C<preprocess_filter>
 prior to use in the C<WHERE> clause.
@@ -350,11 +387,13 @@ prior to use in the C<WHERE> clause.
 =cut
 
 sub update {
-	my ($self, $name, $set, $filter, $bindings) = @_;
+	my ($self, %args) = @_;
+	
+	my ($name, $set, $filter, $bindings) = @args{qw(-table -set -filter -bindings)};
 
 	my $sql = "UPDATE $name SET ".join(",", map { "$_ = ?" } keys(%$set));
 	if ($filter) {
-		$sql .= " WHERE ".($self->preprocess_filter({$name=>$name},$filter));
+		$sql .= " WHERE ".($self->preprocess_filter(-aliases => {$name=>$name}, -filter => $filter));
 	}
 
 #debug#	print STDERR "update SQL: $sql\n";
@@ -363,7 +402,7 @@ sub update {
 	$sth->execute(values(%$set), $bindings ? @$bindings : ());
 }
 
-=item $rows = $driver-E<gt>delete($name [, $filter [, \@bindings ] ] )
+=item $rows = $driver-E<gt>delete(%args)
 
 Delets zero or more rows. The filter is processed by C<preprocess_filter> prior
 to use in the C<WHERE> clause.
@@ -371,7 +410,9 @@ to use in the C<WHERE> clause.
 =cut
 
 sub delete {
-	my ($self, $name, $filter, $bindings) = @_;
+	my ($self, %args) = @_;
+	
+	my ($name, $filter, $bindings) = @args{qw(-table -filter -bindings)};
 
 	my $sql = "DELETE FROM $name";
 	if ($filter) {
@@ -394,7 +435,8 @@ simple C<next> call.
 # it be better to call next rather than finish, execute, fetchrow_hashref in
 # the case that the handle is already at the first row?
 sub first {
-	my ($self, $handle) = @_;
+	my ($self, %args) = @_;
+	my $handle = $args{-handle};
 
 	my $sth = $handle->[1];
 	$sth->finish;
@@ -409,7 +451,8 @@ Fetches the next row.
 =cut
 
 sub next {
-	my ($self, $handle) = @_;
+	my ($self, %args) = @_;
+	my $handle = $args{-handle};
 
 	my $sth = $handle->[1];
 	$sth->fetchrow_hashref;

@@ -15,107 +15,107 @@ eval {
 	$driver->create_table(@folks);
 
 	for $folk (@folks_data) {
-		$driver->insert('folks', { name => $folk->{name} });
+		$driver->insert(-table => 'folks', -values => { name => $folk->{name} });
 	}
 
-	$sth = $driver->open_table('folks', "name < 'Laura'");
-	$row = $driver->next($sth);
+	$sth = $driver->open_table(-table => 'folks', -filter => "name < 'Laura'");
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Gregg', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'James', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok(!$row, 'Record test.');
 
-	$sth = $driver->open_table('folks', "name > 'Laura'");
-	$row = $driver->next($sth);
+	$sth = $driver->open_table(-table => 'folks', -filter => "name > 'Laura'");
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Sterling', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Terri', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Rhonda', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok(!$row, 'Record test.');
 
-	$sth = $driver->open_table('folks', "name <= 'Laura'");
-	$row = $driver->next($sth);
+	$sth = $driver->open_table(-table => 'folks', -filter => "name <= 'Laura'");
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Gregg', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'James', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Laura', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok(!$row, 'Record test.');
 
-	$sth = $driver->open_table('folks', "name >= 'Laura'");
-	$row = $driver->next($sth);
+	$sth = $driver->open_table(-table => 'folks', -filter => "name >= 'Laura'");
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Sterling', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Terri', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Rhonda', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Laura', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok(!$row, 'Record test.');
 
-	$sth = $driver->open_table('folks', "name <> 'Laura'");
-	$row = $driver->next($sth);
+	$sth = $driver->open_table(-table => 'folks', -filter => "name <> 'Laura'");
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Sterling', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Terri', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Gregg', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Rhonda', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'James', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok(!$row, 'Record test.');
 
-	$sth = $driver->open_table('folks', "name = 'Laura'");
-	$row = $driver->next($sth);
+	$sth = $driver->open_table(-table => 'folks', -filter => "name = 'Laura'");
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Laura', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok(!$row, 'Record test.');
 
-	$sth = $driver->open_table('folks', "name LIKE '\%er\%'");
-	$row = $driver->next($sth);
+	$sth = $driver->open_table(-table => 'folks', -filter => "name LIKE '\%er\%'");
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Sterling', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Terri', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok(!$row, 'Record test.');
 
-	$sth = $driver->open_table('folks', "name NOT LIKE '\%er\%'");
-	$row = $driver->next($sth);
+	$sth = $driver->open_table(-table => 'folks', -filter => "name NOT LIKE '\%er\%'");
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Gregg', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Rhonda', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'James', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Laura', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok(!$row, 'Record test.');
 
-	$sth = $driver->open_table('folks', "name ILIKE '\%L_\%'");
-	$row = $driver->next($sth);
+	$sth = $driver->open_table(-table => 'folks', -filter => "name ILIKE '\%L_\%'");
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Sterling', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Laura', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok(!$row, 'Record test.');
 
-	$sth = $driver->open_table('folks', "name NOT ILIKE '\%L_\%'");
-	$row = $driver->next($sth);
+	$sth = $driver->open_table(-table => 'folks', -filter => "name NOT ILIKE '\%L_\%'");
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Terri', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Gregg', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'Rhonda', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok($row->{name} eq 'James', 'Record test.');
-	$row = $driver->next($sth);
+	$row = $driver->next(-handle => $sth);
 	ok(!$row, 'Record test.');
 
 };

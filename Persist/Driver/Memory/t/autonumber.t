@@ -9,7 +9,7 @@ $driver->create_table(@folks);
 
 $i = 1;
 for $folk (@folks_data) {
-	$driver->insert('folks', { name => $folk->{name}, age => $folk->{age} });
-	$fid = $driver->sequence_value('folks', 'fid');
+	$driver->insert(-table => 'folks', -values => { name => $folk->{name}, age => $folk->{age} });
+	$fid = $driver->sequence_value(-table => 'folks', -column => 'fid');
 	ok($fid == $i++, 'Sequence test.');
 }

@@ -1,4 +1,4 @@
-use 5.8.0;
+use 5.008;
 use ExtUtils::MakeMaker;
 
 # Take out our custom configuration directives to keep MakeMaker from whining
@@ -18,14 +18,44 @@ for ($i = $#ARGV; $i >= 0; --$i) {
 	}
 }
 
+# Provide a much easier way to configure PostgreSQL tests, the other method
+# will probably go away eventually.
+if (!defined $VARS{PGTESTCONN}) {
+	if (prompt("Do you want to test support of PostgreSQL?", "n") =~ /y/i) {
+		$VARS{PGTESTCONN} = prompt("Enter the connection URI to a PostgreSQL database we can use:", "dbname=test");
+		$VARS{PGTESTUSER} = prompt("Enter the PostgreSQL user to connect as:", "test");
+
+		# Attempt to hide the password. Term::ReadKey should be almost everywhere,
+		# but we'll be careful just in case.
+		my $use_readkey = 0;
+		eval { use Term::ReadKey; $use_readkey = 1; };
+		if ($@) {
+			print STDERR "Could not load Term::ReadKey: $@\n";
+			print STDERR "Password prompt will not hide your password (you may not care, but I'm tellin' ya anyway).\n";
+		}
+
+		ReadMode('noecho') if $use_readkey;
+		$VARS{PGTESTPASS} = prompt("Enter the PostgreSQL password to connect with:");
+		ReadMode('restore') if $use_readkey;
+		print "\n";
+	} else {
+		print "Will skip all PostgreSQL tests.\n";
+	}
+}
+
 WriteMakefile(
     NAME			=> 'persist',
-	VERSION			=> '0.3.3',
+	VERSION_FROM	=> 'Persist/Persist.pm',
 	PREREQ_PM		=> {
-		'DBI'				=> '0',
-		'Date::Calc'		=> '0',
-		($PGTESTCONN ? ('DBD::Pg' => '0') : ()), # require it when they use it
-		'Parse::RecDescent'	=> '1.80',
+		'DBI'						=> '1.37',
+		'DateTime'					=> '0.17',
+		'DateTime::Format::ISO8601'	=> '0.03',
+        'Getargs::Mixed'            => '1.03',
+		# require them when they use them
+		($PGTESTCONN ? (
+				'DBD::Pg' 				=> '1.22',
+				'DateTime::Format::Pg'	=> '0.05',
+			) : ()),
 	},
 	ABSTRACT        => 'Data persistence library allowing for a write-once/run-anywhere approach.',
 );
